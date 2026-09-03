@@ -1,0 +1,4 @@
+# Heavy OCR machine learning dependencies
+# Typically installed in Linux/Docker containers with proper C++ runtime libraries
+paddlepaddle==2.6.2
+paddleocr>=2.7.3,<3.0.0
