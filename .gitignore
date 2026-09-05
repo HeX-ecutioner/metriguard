@@ -59,6 +59,12 @@ lerna-debug.log*
 # Databases & local data
 *.sqlite3
 *.db
+backend/data/*
+!backend/data/.gitkeep
+
+# Local storage
+backend/storage/*
+!backend/storage/.gitkeep
 
 # Temporary test artifacts
 sample_package.jpg
