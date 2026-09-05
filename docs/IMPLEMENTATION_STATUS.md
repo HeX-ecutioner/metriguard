@@ -14,6 +14,9 @@
 - **Integration**: Configured dynamic API URL routing and Vite dev server proxy for `/api/v1/inspect`.
 - **Quality & Linting**: Fixed ESLint `@typescript-eslint/no-explicit-any` errors, defensive array handling in results view, clean TypeScript build.
 
-## Milestone 5: Local & Containerized Startup (COMPLETED)
-- **Local Bare-Metal Startup**: Ready to run out of the box with `uvicorn app.main:app --port 8000` and `npm run dev`.
-- **Docker Ready**: Corrected Debian 12 package names (`libgl1` + `libgomp1`) in `backend/Dockerfile` for when Docker Desktop is installed.
+## Milestone 5: Native Windows Architecture (COMPLETED)
+- **Docker-Free Runtime**: Docker completely eliminated from development workflow.
+- **SQLite Storage**: Local SQLite database under `backend/data/metriguard.db` with Alembic migrations.
+- **Storage Abstraction**: Extensible local filesystem storage under `backend/storage/`.
+- **Health Check**: Added diagnostic `/health` and `/api/v1/health` endpoints.
+- **Native Automation**: PowerShell startup (`start.ps1`) and automated setup verification (`verify_setup.ps1`).
