@@ -1,23 +1,15 @@
-import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import inspect, health
-from app.db.database import DB_AVAILABLE, Base, engine
-import app.db.models  # Register models with Base
-
-logger = logging.getLogger(__name__)
+from app.db.database import Base, engine
+import app.db.models
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if DB_AVAILABLE and engine is not None:
-        try:
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-            logger.info("Database tables initialized successfully.")
-        except Exception as e:
-            logger.warning(f"Database table initialization skipped (running offline or DB unavailable): {e}")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield
 
 
@@ -39,6 +31,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(inspect.router, prefix="/api/v1")
+
 
 @app.get("/")
 def read_root():

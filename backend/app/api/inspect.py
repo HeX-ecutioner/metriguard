@@ -5,7 +5,7 @@ from app.models.schemas import InspectionResponse
 from app.services.ai_extractor import extract_information
 from app.services.rule_engine import evaluate_compliance
 from app.services.storage import get_storage_service
-from app.db.database import get_db, DB_AVAILABLE
+from app.db.database import get_db
 from app.db.models import InspectionRecord
 
 logger = logging.getLogger(__name__)
@@ -46,8 +46,8 @@ async def inspect_package(
         logger.error(f"Error during compliance evaluation: {e}")
         raise HTTPException(status_code=500, detail=f"Error during compliance evaluation: {str(e)}")
 
-    # Step 3: (Optional) Store inspection record to DB if available
-    if DB_AVAILABLE and db_session is not None:
+    # Step 3: Store inspection record to DB
+    if db_session is not None:
         try:
             record = InspectionRecord(
                 status=inspection_result.status,
