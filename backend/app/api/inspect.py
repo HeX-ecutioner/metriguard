@@ -4,6 +4,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from app.models.schemas import InspectionResponse
 from app.services.ai_extractor import extract_information
 from app.services.rule_engine import evaluate_compliance
+from app.services.storage import get_storage_service
 from app.db.database import get_db, DB_AVAILABLE
 from app.db.models import InspectionRecord
 
@@ -23,6 +24,14 @@ async def inspect_package(
     if not content:
         raise HTTPException(status_code=400, detail="Empty image file provided.")
     
+    # Step 0: Persist image using storage abstraction
+    image_storage_key = None
+    try:
+        storage = get_storage_service()
+        image_storage_key = await storage.save_file(file.filename or "package.jpg", content)
+    except Exception as store_err:
+        logger.warning(f"Failed to persist image to storage service: {store_err}")
+
     # Step 1: AI Extracts visible declarations
     try:
         extracted_data = extract_information(content)
@@ -45,6 +54,7 @@ async def inspect_package(
                 confidence_score=inspection_result.confidence_score,
                 extracted_texts_json=json.dumps(inspection_result.extracted_texts),
                 violations_json=json.dumps([v.model_dump() for v in inspection_result.violations]),
+                image_path=image_storage_key,
             )
             db_session.add(record)
             await db_session.commit()

@@ -8,6 +8,19 @@ def test_read_root():
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "message": "Metriguard API is running"}
 
+def test_health_endpoint():
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] in ("healthy", "degraded")
+    assert "database" in data
+    assert "storage" in data
+
+def test_health_v1_endpoint():
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
+    assert response.json()["status"] in ("healthy", "degraded")
+
 def test_inspect_valid_image():
     response = client.post(
         "/api/v1/inspect",

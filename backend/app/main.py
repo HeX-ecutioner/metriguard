@@ -2,7 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import inspect
+from app.api import inspect, health
 from app.db.database import DB_AVAILABLE, Base, engine
 import app.db.models  # Register models with Base
 
@@ -36,6 +36,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(health.router)
+app.include_router(health.router, prefix="/api/v1")
 app.include_router(inspect.router, prefix="/api/v1")
 
 @app.get("/")
