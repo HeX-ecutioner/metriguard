@@ -1,9 +1,18 @@
 import os
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://metry_user:metry_password@localhost:5432/metriguard")
+# Ensure backend/data directory exists
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+DATA_DIR = BACKEND_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+DEFAULT_DB_FILE = (DATA_DIR / "metriguard.db").as_posix()
+DEFAULT_DB_URL = f"sqlite+aiosqlite:///{DEFAULT_DB_FILE}"
+
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB_URL)
 
 DB_AVAILABLE = False
 engine = None
@@ -20,7 +29,7 @@ try:
 except ImportError:
     class Base:
         pass
-    logger.info("SQLAlchemy or asyncpg not installed; database persistence will be disabled.")
+    logger.info("SQLAlchemy or aiosqlite not installed; database persistence will be disabled.")
 
 
 async def get_db():

@@ -12,6 +12,7 @@ if DB_AVAILABLE:
         confidence_score = Column(Float)
         extracted_texts_json = Column(String)
         violations_json = Column(String)
+        image_path = Column(String, nullable=True)
         created_at = Column(DateTime(timezone=True), server_default=func.now())
 else:
     class InspectionRecord:
