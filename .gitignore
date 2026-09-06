@@ -72,9 +72,6 @@ backend/storage/uploads/*
 backend/storage/reports/*
 !backend/storage/reports/.gitkeep
 
-# Temporary test artifacts
-sample_package.jpg
-
 # Operating System Files
 .DS_Store
 .AppleDouble
@@ -95,3 +92,7 @@ $RECYCLE.BIN/
 *.njsproj
 *.sln
 *.sw?
+
+# Others
+TODO.txt
+*.pptx
