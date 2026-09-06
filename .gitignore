@@ -65,6 +65,12 @@ backend/data/*
 # Local storage
 backend/storage/*
 !backend/storage/.gitkeep
+!backend/storage/uploads/
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep
+!backend/storage/reports/
+backend/storage/reports/*
+!backend/storage/reports/.gitkeep
 
 # Temporary test artifacts
 sample_package.jpg
