@@ -33,10 +33,14 @@ from app.db.models import Inspection, PackageImage, Declaration
 client = TestClient(app)
 
 
-def make_test_image_bytes(size=(320, 240), color=(255, 255, 255), format="JPEG") -> bytes:
-    """Helper to generate in-memory test image bytes."""
+def make_test_image_bytes(size=(320, 240), color=(255, 255, 255), format="JPEG", text="MRP Rs. 150") -> bytes:
+    """Helper to generate in-memory test image bytes with text."""
+    from PIL import ImageDraw
     buf = io.BytesIO()
     img = Image.new("RGB", size, color=color)
+    if text:
+        draw = ImageDraw.Draw(img)
+        draw.text((20, 30), text, fill=(0, 0, 0))
     img.save(buf, format=format)
     return buf.getvalue()
 
@@ -321,21 +325,26 @@ def test_ocr_service_persists_raw_declarations_without_compliance_decision():
 
 def test_api_ocr_process_endpoint_success():
     """Verify direct image upload to POST /api/v1/ocr/process."""
-    img_bytes = make_test_image_bytes(size=(300, 200))
-    response = client.post(
-        "/api/v1/ocr/process",
-        files={"file": ("label.jpg", img_bytes, "image/jpeg")}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "image_id" in data
-    assert "recognized_text" in data
-    assert "confidence" in data
-    assert "items" in data
-    assert len(data["items"]) > 0
-    assert "preprocessing_metadata" in data
-    assert "provider_name" in data
-    assert "processing_duration_ms" in data
+    from app.services.ocr.service import get_ocr_service
+    app.dependency_overrides[get_ocr_service] = lambda: OCRService(provider=MockOCRProvider())
+    try:
+        img_bytes = make_test_image_bytes(size=(300, 200))
+        response = client.post(
+            "/api/v1/ocr/process",
+            files={"file": ("label.jpg", img_bytes, "image/jpeg")}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "image_id" in data
+        assert "recognized_text" in data
+        assert "confidence" in data
+        assert "items" in data
+        assert len(data["items"]) > 0
+        assert "preprocessing_metadata" in data
+        assert "provider_name" in data
+        assert "processing_duration_ms" in data
+    finally:
+        app.dependency_overrides.pop(get_ocr_service, None)
 
 
 def test_api_ocr_process_unreadable_file():
@@ -350,29 +359,34 @@ def test_api_ocr_process_unreadable_file():
 
 def test_api_inspection_image_ocr_flow():
     """Verify running OCR on an image attached to an existing inspection."""
-    # 1. Create inspection session
-    create_res = client.post("/api/v1/inspections", json={"product_name": "Sunflower Oil"})
-    assert create_res.status_code == 201
-    inspection_id = create_res.json()["id"]
+    from app.services.ocr.service import get_ocr_service
+    app.dependency_overrides[get_ocr_service] = lambda: OCRService(provider=MockOCRProvider())
+    try:
+        # 1. Create inspection session
+        create_res = client.post("/api/v1/inspections", json={"product_name": "Sunflower Oil"})
+        assert create_res.status_code == 201
+        inspection_id = create_res.json()["id"]
 
-    # 2. Upload image to inspection
-    img_bytes = make_test_image_bytes(size=(400, 300))
-    upload_res = client.post(
-        f"/api/v1/inspections/{inspection_id}/images",
-        files={"file": ("oil_front.jpg", img_bytes, "image/jpeg")}
-    )
-    assert upload_res.status_code == 201
-    image_id = upload_res.json()["id"]
+        # 2. Upload image to inspection
+        img_bytes = make_test_image_bytes(size=(400, 300))
+        upload_res = client.post(
+            f"/api/v1/inspections/{inspection_id}/images",
+            files={"file": ("oil_front.jpg", img_bytes, "image/jpeg")}
+        )
+        assert upload_res.status_code == 201
+        image_id = upload_res.json()["id"]
 
-    # 3. Call OCR endpoint on the inspection image
-    ocr_res = client.post(f"/api/v1/ocr/inspections/{inspection_id}/images/{image_id}")
-    assert ocr_res.status_code == 200
-    ocr_data = ocr_res.json()
+        # 3. Call OCR endpoint on the inspection image
+        ocr_res = client.post(f"/api/v1/ocr/inspections/{inspection_id}/images/{image_id}")
+        assert ocr_res.status_code == 200
+        ocr_data = ocr_res.json()
 
-    assert ocr_data["image_id"] == image_id
-    assert len(ocr_data["items"]) == 4
-    assert ocr_data["preprocessing_metadata"]["original_width"] == 400
-    assert ocr_data["preprocessing_metadata"]["original_height"] == 300
+        assert ocr_data["image_id"] == image_id
+        assert len(ocr_data["items"]) == 4
+        assert ocr_data["preprocessing_metadata"]["original_width"] == 400
+        assert ocr_data["preprocessing_metadata"]["original_height"] == 300
+    finally:
+        app.dependency_overrides.pop(get_ocr_service, None)
 
 
 def test_api_inspection_image_ocr_missing_inspection():

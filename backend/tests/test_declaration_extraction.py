@@ -444,50 +444,66 @@ def test_inspection_session_extraction_and_persistence(client):
     - Verifies declarations are saved to DB
     - Verifies NO compliance violations or pass/fail decisions are generated
     """
-    # 1. Create inspection
-    create_resp = client.post("/api/v1/inspections", json={"product_name": "Test Cookies"})
-    assert create_resp.status_code == 201
-    insp_id = create_resp.json()["id"]
+    from app.services.inspection_orchestrator import get_inspection_orchestrator, InspectionOrchestrator
+    from app.services.ocr.mock_provider import MockOCRProvider
+    from app.services.ocr.service import OCRService, get_ocr_service
 
-    # 2. Upload image (100x100 white PNG)
-    from PIL import Image
-    import io
-    img = Image.new("RGB", (100, 100), color="white")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    buf.seek(0)
+    mock_svc = OCRService(provider=MockOCRProvider())
+    mock_orch = InspectionOrchestrator(ocr_service=mock_svc)
+    app.dependency_overrides[get_inspection_orchestrator] = lambda: mock_orch
+    app.dependency_overrides[get_ocr_service] = lambda: mock_svc
 
-    upload_resp = client.post(
-        f"/api/v1/inspections/{insp_id}/images",
-        files={"file": ("cookie_label.png", buf.getvalue(), "image/png")}
-    )
-    assert upload_resp.status_code == 201
-    img_id = upload_resp.json()["id"]
-    # 3. Check prior counts before running extraction
-    pre_insp = client.get(f"/api/v1/inspections/{insp_id}").json()
-    pre_violations_count = len(pre_insp.get("violations", []))
-    pre_declarations_count = len(pre_insp.get("declarations", []))
+    try:
 
-    # 4. Trigger extraction endpoint
-    extract_resp = client.post(f"/api/v1/extract/inspections/{insp_id}")
-    assert extract_resp.status_code == 200
-    extraction_data = extract_resp.json()
-    assert "declarations" in extraction_data
-    assert "violations" not in extraction_data
+        # 1. Create inspection
+        create_resp = client.post("/api/v1/inspections", json={"product_name": "Test Cookies"})
+        assert create_resp.status_code == 201
+        insp_id = create_resp.json()["id"]
 
-    # 5. Fetch inspection via GET and verify declarations persisted
-    get_insp = client.get(f"/api/v1/inspections/{insp_id}")
-    assert get_insp.status_code == 200
-    insp_data = get_insp.json()
+        # 2. Upload image (100x100 white PNG)
+        from PIL import Image
+        import io
+        img = Image.new("RGB", (100, 100), color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
 
-    # Verify declarations were added to DB
-    assert len(insp_data["declarations"]) > pre_declarations_count
-    saved_decl = [d for d in insp_data["declarations"] if d["source_image_id"] == img_id]
-    assert len(saved_decl) > 0
-    assert "declaration_type" in saved_decl[0]
-    assert "extracted_value" in saved_decl[0]
+        upload_resp = client.post(
+            f"/api/v1/inspections/{insp_id}/images",
+            files={"file": ("cookie_label.png", buf.getvalue(), "image/png")}
+        )
+        assert upload_resp.status_code == 201
+        img_id = upload_resp.json()["id"]
 
-    # Strictly verify compliance decoupling:
-    # No new violations were created by the extraction endpoint
-    assert len(insp_data["violations"]) == pre_violations_count
+        # 3. Check prior counts before running extraction
+        pre_insp = client.get(f"/api/v1/inspections/{insp_id}").json()
+        pre_violations_count = len(pre_insp.get("violations", []))
+        pre_declarations_count = len(pre_insp.get("declarations", []))
+
+        # 4. Trigger extraction endpoint
+        extract_resp = client.post(f"/api/v1/extract/inspections/{insp_id}")
+        assert extract_resp.status_code == 200
+        extraction_data = extract_resp.json()
+        assert "declarations" in extraction_data
+        assert "violations" not in extraction_data
+
+        # 5. Fetch inspection via GET and verify declarations persisted
+        get_insp = client.get(f"/api/v1/inspections/{insp_id}")
+        assert get_insp.status_code == 200
+        insp_data = get_insp.json()
+
+        # Verify declarations were added to DB
+        assert len(insp_data["declarations"]) > pre_declarations_count
+        saved_decl = [d for d in insp_data["declarations"] if d["source_image_id"] == img_id]
+        assert len(saved_decl) > 0
+        assert "declaration_type" in saved_decl[0]
+        assert "extracted_value" in saved_decl[0]
+
+        # Strictly verify compliance decoupling:
+        # No new violations were created by the extraction endpoint
+        assert len(insp_data["violations"]) == pre_violations_count
+    finally:
+        app.dependency_overrides.pop(get_inspection_orchestrator, None)
+        app.dependency_overrides.pop(get_ocr_service, None)
+
 

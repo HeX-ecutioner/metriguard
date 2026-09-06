@@ -52,7 +52,7 @@ class PaddleOCRProvider(OCRProvider):
 
             from paddleocr import PaddleOCR
             try:
-                self._engine = PaddleOCR(device="cpu", lang=self.lang)
+                self._engine = PaddleOCR(device="cpu", enable_mkldnn=False, lang=self.lang)
             except TypeError:
                 self._engine = PaddleOCR(use_angle_cls=False, lang=self.lang)
 
