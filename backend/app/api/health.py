@@ -1,9 +1,8 @@
-import os
 import logging
-from pathlib import Path
 from fastapi import APIRouter
 from sqlalchemy import text
 from app.db.database import DB_AVAILABLE, engine
+from app.core.config import settings
 from app.services.ai_extractor import USE_MOCK_EXTRACTOR
 from app.services.storage import get_storage_service
 
@@ -13,17 +12,26 @@ router = APIRouter()
 
 
 @router.get("/health")
-async def health_check():
+def health_check():
     """
-    System health check returning status of database, storage, and AI components.
+    Standard health check endpoint.
+    Returns: {"status": "ok"}
+    """
+    return {"status": "ok"}
+
+
+@router.get("/health/detail")
+def health_check_detail():
+    """
+    Diagnostic health check returning status of database, storage, and AI components.
     """
     db_status = "disabled"
     db_details = "Database persistence not enabled"
-    
+
     if DB_AVAILABLE and engine is not None:
         try:
-            async with engine.connect() as conn:
-                await conn.execute(text("SELECT 1"))
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
             db_status = "connected"
             db_details = str(engine.url)
         except Exception as e:
@@ -50,11 +58,11 @@ async def health_check():
         },
         "storage": {
             "status": storage_status,
-            "type": os.getenv("STORAGE_TYPE", "local"),
+            "type": "local",
             "path": storage_path,
         },
         "ai_extractor": {
-            "mode": "mock" if USE_MOCK_EXTRACTOR else "ocr",
+            "mode": "mock" if USE_MOCK_EXTRACTOR or settings.USE_MOCK_EXTRACTOR else "ocr",
         },
         "version": "1.0.0",
     }

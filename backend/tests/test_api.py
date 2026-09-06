@@ -11,15 +11,20 @@ def test_read_root():
 def test_health_endpoint():
     response = client.get("/health")
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] in ("healthy", "degraded")
-    assert "database" in data
-    assert "storage" in data
+    assert response.json() == {"status": "ok"}
 
 def test_health_v1_endpoint():
     response = client.get("/api/v1/health")
     assert response.status_code == 200
-    assert response.json()["status"] in ("healthy", "degraded")
+    assert response.json() == {"status": "ok"}
+
+def test_health_detail_endpoint():
+    response = client.get("/health/detail")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] in ("healthy", "degraded")
+    assert "database" in data
+    assert "storage" in data
 
 def test_inspect_valid_image():
     response = client.post(
@@ -48,4 +53,3 @@ def test_inspect_empty_file():
     )
     assert response.status_code == 400
     assert "empty" in response.json()["detail"].lower()
-
