@@ -3,7 +3,6 @@ import ImageUpload from './components/ImageUpload';
 import ResultsView from './components/ResultsView';
 import DashboardView from './components/DashboardView';
 import InspectionDetailView from './components/InspectionDetailView';
-import { apiClient } from './api/client';
 import type { PackageImage, Inspection } from './api/client';
 
 type ViewMode = 'dashboard' | 'detail' | 'new_inspection';
@@ -21,9 +20,19 @@ function App() {
     setActiveInspection(inspection);
   };
 
+  const handleUploadAnotherImage = () => {
+    // Reset active inspection state completely so new upload gets a brand-new ID
+    setActiveInspection(null);
+  };
+
   const handleOpenDetail = (id: number) => {
     setSelectedInspectionId(id);
     setCurrentView('detail');
+  };
+
+  const handleStartNewInspection = () => {
+    setActiveInspection(null);
+    setCurrentView('new_inspection');
   };
 
   return (
@@ -45,7 +54,7 @@ function App() {
           </button>
           <button
             className={`nav-tab ${currentView === 'new_inspection' ? 'active' : ''}`}
-            onClick={() => setCurrentView('new_inspection')}
+            onClick={handleStartNewInspection}
             data-testid="tab-new-inspection"
           >
             ⚡ New Inspection
@@ -64,7 +73,7 @@ function App() {
           <button
             className="btn"
             style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
-            onClick={() => setCurrentView('new_inspection')}
+            onClick={handleStartNewInspection}
           >
             + Inspect Package
           </button>
@@ -76,7 +85,7 @@ function App() {
         {currentView === 'dashboard' && (
           <DashboardView
             onSelectInspection={handleOpenDetail}
-            onNewInspection={() => setCurrentView('new_inspection')}
+            onNewInspection={handleStartNewInspection}
           />
         )}
 
@@ -92,84 +101,17 @@ function App() {
             <section className="upload-column" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <ImageUpload
                 onUploadSuccess={handleUploadSuccess}
-                currentInspectionId={activeInspection?.id}
                 onInspectionCreated={handleInspectionCreated}
+                onUploadAnotherImage={handleUploadAnotherImage}
               />
-
-              {activeInspection && activeInspection.images && activeInspection.images.length > 0 && (
-                <section className="glass-card">
-                  <h3 style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Inspection Session #{activeInspection.id}</span>
-                    <span
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--primary-color)',
-                        padding: '0.2rem 0.6rem',
-                        borderRadius: '9999px',
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        border: '1px solid var(--primary-color)',
-                      }}
-                    >
-                      {activeInspection.status}
-                    </span>
-                  </h3>
-                  {activeInspection.product_name && (
-                    <p style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-                      <strong>Product:</strong> {activeInspection.product_name}
-                    </p>
-                  )}
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-                    Attached Images ({activeInspection.images.length}):
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
-                    {activeInspection.images.map((img) => (
-                      <div
-                        key={img.id}
-                        style={{
-                          padding: '0.75rem',
-                          background: 'rgba(15, 23, 42, 0.6)',
-                          borderRadius: '8px',
-                          border: '1px solid var(--glass-border)',
-                          fontSize: '0.8rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          gap: '0.4rem',
-                        }}
-                      >
-                        <div>
-                          <p style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '0.25rem' }}>
-                            {img.original_filename}
-                          </p>
-                          <p style={{ color: 'var(--text-muted)' }}>{img.width} × {img.height} px</p>
-                          <p style={{ color: 'var(--text-muted)' }}>{(img.file_size / 1024).toFixed(1)} KB</p>
-                          <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>ID #{img.id}</p>
-                        </div>
-                        <a
-                          href={apiClient.getImageFileUrl(activeInspection.id, img.id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            display: 'inline-block',
-                            marginTop: '0.25rem',
-                            fontSize: '0.75rem',
-                            color: 'var(--primary-color)',
-                            textDecoration: 'none',
-                            fontWeight: 600,
-                          }}
-                        >
-                          Open Image ↗
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
             </section>
 
             <section className="results-column">
               {activeInspection && (activeInspection.result || (activeInspection.images && activeInspection.images.length > 0)) ? (
-                <ResultsView inspection={activeInspection} />
+                <ResultsView
+                  inspection={activeInspection}
+                  onUploadAnotherImage={handleUploadAnotherImage}
+                />
               ) : (
                 <div
                   className="glass-card"
@@ -188,7 +130,7 @@ function App() {
                   <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.7 }}>📋</div>
                   <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-main)' }}>Inspection Report</h3>
                   <p style={{ maxWidth: '360px', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                    Upload a packaged commodity label to trigger automated OCR extraction and Legal Metrology (2011) compliance verification.
+                    Select an image and click "Start Inspection" to trigger automated OCR extraction and Legal Metrology (2011) compliance verification.
                   </p>
                 </div>
               )}

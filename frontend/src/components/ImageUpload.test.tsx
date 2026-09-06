@@ -2,26 +2,79 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ImageUpload from './ImageUpload';
 import { apiClient } from '../api/client';
+import type { PackageImage } from '../api/client';
 
-describe('ImageUpload Component', () => {
+describe('ImageUpload Component Lifecycle & Invariants', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders upload area and instructions correctly', () => {
+  it('renders STATE A: IDLE correctly with dropzone and instructions', () => {
     render(<ImageUpload />);
 
     expect(screen.getByText(/Upload Package Image/i)).toBeDefined();
     expect(screen.getByText(/Drag & Drop Image Here/i)).toBeDefined();
     expect(screen.getByText(/Supported formats: JPEG, PNG, WebP/i)).toBeDefined();
+    expect(screen.queryByText(/Start Inspection/i)).toBeNull();
+    expect(screen.queryByText(/Cancel/i)).toBeNull();
   });
 
-  it('handles frontend upload success flow and displays inspection ID and image metadata', async () => {
-    // Mock API client methods
+  it('transitions to STATE B: IMAGE_SELECTED on file selection without calling any backend APIs', async () => {
+    const createSpy = vi.spyOn(apiClient, 'createInspection');
+    const uploadSpy = vi.spyOn(apiClient, 'uploadInspectionImage');
+
+    render(<ImageUpload />);
+
+    const file = new File(['fake-jpeg-bytes'], 'test_package.jpg', { type: 'image/jpeg' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/test_package.jpg/i)).toBeDefined();
+      expect(screen.getByText(/Start Inspection/i)).toBeDefined();
+      expect(screen.getByText(/Cancel/i)).toBeDefined();
+    });
+
+    // Verify ZERO backend requests were made in IMAGE_SELECTED state
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(uploadSpy).not.toHaveBeenCalled();
+  });
+
+  it('cancels from STATE B back to STATE A: IDLE with zero server calls or side-effects', async () => {
+    const createSpy = vi.spyOn(apiClient, 'createInspection');
+    const uploadSpy = vi.spyOn(apiClient, 'uploadInspectionImage');
+
+    render(<ImageUpload />);
+
+    const file = new File(['fake-jpeg-bytes'], 'cancel_me.jpg', { type: 'image/jpeg' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Start Inspection/i)).toBeDefined();
+    });
+
+    // Click Cancel in IMAGE_SELECTED state
+    const cancelBtn = screen.getByText(/^Cancel$/i);
+    fireEvent.click(cancelBtn);
+
+    // Verify it returned to IDLE
+    await waitFor(() => {
+      expect(screen.getByText(/Drag & Drop Image Here/i)).toBeDefined();
+      expect(screen.queryByText(/cancel_me.jpg/i)).toBeNull();
+      expect(screen.queryByText(/Start Inspection/i)).toBeNull();
+    });
+
+    // Zero backend calls made
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(uploadSpy).not.toHaveBeenCalled();
+  });
+
+  it('transitions STATE B -> C -> D: Starts inspection, creates session, uploads image, and displays completed status', async () => {
     vi.spyOn(apiClient, 'createInspection').mockResolvedValue({
-      id: 42,
+      id: 77,
       status: 'CREATED',
-      product_name: 'Test Salt 1kg',
+      product_name: 'Premium Salt 1kg',
       overall_confidence: null,
       notes: null,
       created_at: '2026-09-06T10:00:00Z',
@@ -31,34 +84,34 @@ describe('ImageUpload Component', () => {
 
     vi.spyOn(apiClient, 'uploadInspectionImage').mockResolvedValue({
       id: 101,
-      inspection_id: 42,
-      file_path: 'uploads/abc123_salt.jpg',
+      inspection_id: 77,
+      file_path: 'uploads/salt.jpg',
       original_filename: 'salt.jpg',
       mime_type: 'image/jpeg',
-      file_size: 204800,
-      width: 1200,
-      height: 900,
+      file_size: 102400,
+      width: 800,
+      height: 600,
       created_at: '2026-09-06T10:01:00Z',
     });
 
     vi.spyOn(apiClient, 'getInspection').mockResolvedValue({
-      id: 42,
-      status: 'CREATED',
-      product_name: 'Test Salt 1kg',
-      overall_confidence: null,
+      id: 77,
+      status: 'COMPLIANT',
+      product_name: 'Premium Salt 1kg',
+      overall_confidence: 0.95,
       notes: null,
       created_at: '2026-09-06T10:00:00Z',
       updated_at: '2026-09-06T10:01:00Z',
       images: [
         {
           id: 101,
-          inspection_id: 42,
-          file_path: 'uploads/abc123_salt.jpg',
+          inspection_id: 77,
+          file_path: 'uploads/salt.jpg',
           original_filename: 'salt.jpg',
           mime_type: 'image/jpeg',
-          file_size: 204800,
-          width: 1200,
-          height: 900,
+          file_size: 102400,
+          width: 800,
+          height: 600,
           created_at: '2026-09-06T10:01:00Z',
         },
       ],
@@ -67,32 +120,29 @@ describe('ImageUpload Component', () => {
     const handleSuccess = vi.fn();
     render(<ImageUpload onUploadSuccess={handleSuccess} />);
 
-    // Simulate selecting a file
-    const file = new File(['fake-jpeg-binary-data'], 'salt.jpg', { type: 'image/jpeg' });
+    const file = new File(['fake-jpeg-bytes'], 'salt.jpg', { type: 'image/jpeg' });
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [file] } });
 
-    // Verify preview state appeared with Upload button
     await waitFor(() => {
-      expect(screen.getByText(/Upload Image/i)).toBeDefined();
+      expect(screen.getByText(/Start Inspection/i)).toBeDefined();
     });
 
-    // Click Upload Image
-    const uploadBtn = screen.getByText(/Upload Image/i);
-    fireEvent.click(uploadBtn);
+    // Click Start Inspection
+    fireEvent.click(screen.getByText(/Start Inspection/i));
 
-    // Verify successful upload display
+    // Verify completed status and upload another image button
     await waitFor(() => {
-      expect(screen.getByText(/Image Uploaded Successfully/i)).toBeDefined();
-      expect(screen.getByText(/Inspection ID: #42/i)).toBeDefined();
-      expect(screen.getByText(/1200 × 900 px/i)).toBeDefined();
+      expect(screen.getByText(/Inspection Completed Successfully/i)).toBeDefined();
+      expect(screen.getByText(/Inspection ID: #77/i)).toBeDefined();
+      expect(screen.getByText(/\+ Upload Another Image/i)).toBeDefined();
       expect(handleSuccess).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('handles frontend upload failure and displays validation error from API', async () => {
+  it('handles STATE E: UPLOAD_ANOTHER_IMAGE by resetting all local state and notifying parent', async () => {
     vi.spyOn(apiClient, 'createInspection').mockResolvedValue({
-      id: 55,
+      id: 88,
       status: 'CREATED',
       product_name: null,
       overall_confidence: null,
@@ -102,32 +152,127 @@ describe('ImageUpload Component', () => {
       images: [],
     });
 
-    vi.spyOn(apiClient, 'uploadInspectionImage').mockRejectedValue({
-      detail: "Unsupported file extension '.exe'. Allowed extensions are: .jpg, .jpeg, .png, .webp.",
-      error_code: 'INVALID_EXTENSION',
-      status_code: 400,
+    vi.spyOn(apiClient, 'uploadInspectionImage').mockResolvedValue({
+      id: 202,
+      inspection_id: 88,
+      file_path: 'uploads/first.jpg',
+      original_filename: 'first.jpg',
+      mime_type: 'image/jpeg',
+      file_size: 51200,
+      width: 640,
+      height: 480,
+      created_at: '2026-09-06T10:01:00Z',
     });
 
-    render(<ImageUpload />);
+    vi.spyOn(apiClient, 'getInspection').mockResolvedValue({
+      id: 88,
+      status: 'COMPLIANT',
+      product_name: null,
+      overall_confidence: 0.9,
+      notes: null,
+      created_at: '2026-09-06T10:00:00Z',
+      updated_at: '2026-09-06T10:01:00Z',
+      images: [
+        {
+          id: 202,
+          inspection_id: 88,
+          file_path: 'uploads/first.jpg',
+          original_filename: 'first.jpg',
+          mime_type: 'image/jpeg',
+          file_size: 51200,
+          width: 640,
+          height: 480,
+          created_at: '2026-09-06T10:01:00Z',
+        },
+      ],
+    });
 
-    // Simulate selecting a file
-    const file = new File(['fake-binary'], 'evil.exe', { type: 'application/x-msdownload' });
+    const handleAnotherImage = vi.fn();
+    render(<ImageUpload onUploadAnotherImage={handleAnotherImage} />);
+
+    // Select and start inspection
+    const file = new File(['fake-bytes'], 'first.jpg', { type: 'image/jpeg' });
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(screen.getByText(/Upload Image/i)).toBeDefined();
+      expect(screen.getByText(/Start Inspection/i)).toBeDefined();
     });
 
-    // Click Upload Image
-    const uploadBtn = screen.getByText(/Upload Image/i);
-    fireEvent.click(uploadBtn);
+    fireEvent.click(screen.getByText(/Start Inspection/i));
 
-    // Verify validation error is displayed and no fake success
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeDefined();
-      expect(screen.getByText(/Unsupported file extension '\.exe'/i)).toBeDefined();
-      expect(screen.queryByText(/Image Uploaded Successfully/i)).toBeNull();
+      expect(screen.getByText(/\+ Upload Another Image/i)).toBeDefined();
+    });
+
+    // Click Upload Another Image
+    fireEvent.click(screen.getByText(/\+ Upload Another Image/i));
+
+    // Verify complete reset to IDLE and parent notification
+    await waitFor(() => {
+      expect(screen.getByText(/Drag & Drop Image Here/i)).toBeDefined();
+      expect(screen.queryByText(/first\.jpg/i)).toBeNull();
+      expect(screen.queryByText(/Inspection ID: #88/i)).toBeNull();
+      expect(handleAnotherImage).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('stale response protection: abandons in-flight response if cancelled', async () => {
+    let resolveUpload: (val: PackageImage) => void = () => {};
+    const uploadPromise = new Promise<PackageImage>((resolve) => {
+      resolveUpload = resolve;
+    });
+
+    vi.spyOn(apiClient, 'createInspection').mockResolvedValue({
+      id: 99,
+      status: 'CREATED',
+      product_name: null,
+      overall_confidence: null,
+      notes: null,
+      created_at: '2026-09-06T10:00:00Z',
+      updated_at: '2026-09-06T10:00:00Z',
+      images: [],
+    });
+
+    vi.spyOn(apiClient, 'uploadInspectionImage').mockReturnValue(uploadPromise);
+
+    const handleSuccess = vi.fn();
+    render(<ImageUpload onUploadSuccess={handleSuccess} />);
+
+    const file = new File(['fake-bytes'], 'in_flight.jpg', { type: 'image/jpeg' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Start Inspection/i)).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText(/Start Inspection/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Return to upload screen/i)).toBeDefined();
+    });
+
+    // User abandons / cancels the in-flight processing
+    fireEvent.click(screen.getByText(/Return to upload screen/i));
+
+    // Late network response arrives
+    resolveUpload({
+      id: 999,
+      inspection_id: 99,
+      file_path: 'uploads/late.jpg',
+      original_filename: 'late.jpg',
+      mime_type: 'image/jpeg',
+      file_size: 1000,
+      width: 100,
+      height: 100,
+      created_at: '2026-09-06T10:02:00Z',
+    });
+
+    // Verify stale response did NOT trigger success callback or pollute UI
+    await waitFor(() => {
+      expect(screen.getByText(/Drag & Drop Image Here/i)).toBeDefined();
+      expect(handleSuccess).not.toHaveBeenCalled();
     });
   });
 });

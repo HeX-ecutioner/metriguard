@@ -4,6 +4,7 @@ import { apiClient } from '../api/client';
 
 interface Props {
   inspection: Inspection;
+  onUploadAnotherImage?: () => void;
 }
 
 const DECLARATION_LABELS: Record<string, string> = {
@@ -22,7 +23,7 @@ const DECLARATION_LABELS: Record<string, string> = {
   COMMODITY_NAME: 'Generic / Commodity Name',
 };
 
-const ResultsView: React.FC<Props> = ({ inspection }) => {
+const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
   const confidencePercent = inspection.overall_confidence !== null && inspection.overall_confidence !== undefined
     ? (inspection.overall_confidence * 100).toFixed(1)
     : '0.0';
@@ -46,7 +47,7 @@ const ResultsView: React.FC<Props> = ({ inspection }) => {
             </p>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span className={`status-badge status-${inspection.status}`}>
             {inspection.status.replace(/_/g, ' ')}
           </span>
@@ -61,6 +62,16 @@ const ResultsView: React.FC<Props> = ({ inspection }) => {
             >
               Open Original Image ↗
             </a>
+          )}
+          {onUploadAnotherImage && (
+            <button
+              type="button"
+              className="btn"
+              onClick={onUploadAnotherImage}
+              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.2)', borderColor: 'var(--primary-color)' }}
+            >
+              + Upload Another Image
+            </button>
           )}
         </div>
       </div>
