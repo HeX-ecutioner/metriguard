@@ -67,11 +67,28 @@ export interface Inspection {
   result?: InspectionResultItem | null;
 }
 
+export interface TopViolationStat {
+  rule_id: string;
+  title: string;
+  severity: string;
+  count: number;
+}
+
+export interface DashboardStats {
+  total_inspections: number;
+  compliant_inspections: number;
+  non_compliant_inspections: number;
+  manual_review_inspections: number;
+  top_violations: TopViolationStat[];
+  recent_inspections: Inspection[];
+}
+
 export interface ApiError {
   detail: string;
   error_code?: string;
   status_code: number;
 }
+
 
 class ApiClient {
   private baseUrl: string;
@@ -206,6 +223,66 @@ class ApiClient {
   getImageFileUrl(inspectionId: number, imageId: number): string {
     return this.getUrl(`/api/v1/inspections/${inspectionId}/images/${imageId}/file`);
   }
+
+  /**
+   * Retrieves real-time dashboard statistics and top violations.
+   */
+  async getDashboardStats(): Promise<DashboardStats> {
+    const url = this.getUrl('/api/v1/dashboard/stats');
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => null);
+      throw {
+        detail: err?.detail || `Failed to fetch dashboard stats (HTTP ${response.status})`,
+        error_code: err?.error_code,
+        status_code: response.status,
+      } as ApiError;
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Retrieves paginated inspections with optional status and search filtering.
+   */
+  async listInspections(params?: {
+    status?: string;
+    search?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<Inspection[]> {
+    const query = new URLSearchParams();
+    if (params?.status && params.status !== 'ALL') {
+      query.append('status', params.status);
+    }
+    if (params?.search) {
+      query.append('search', params.search);
+    }
+    if (params?.skip !== undefined) {
+      query.append('skip', String(params.skip));
+    }
+    if (params?.limit !== undefined) {
+      query.append('limit', String(params.limit));
+    }
+
+    const qs = query.toString();
+    const endpoint = `/api/v1/inspections${qs ? `?${qs}` : ''}`;
+    const url = this.getUrl(endpoint);
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => null);
+      throw {
+        detail: err?.detail || `Failed to list inspections (HTTP ${response.status})`,
+        error_code: err?.error_code,
+        status_code: response.status,
+      } as ApiError;
+    }
+
+    return response.json();
+  }
 }
 
 export const apiClient = new ApiClient();
+
