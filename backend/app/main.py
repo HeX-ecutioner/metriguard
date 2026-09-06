@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings, ensure_directories
 from app.api import inspect, health
 from app.db.database import Base, engine
 import app.db.models
@@ -8,8 +9,10 @@ import app.db.models
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Ensure directories (data, storage/uploads, storage/reports) exist
+    ensure_directories()
+    # Initialize SQLite database schema
+    Base.metadata.create_all(bind=engine)
     yield
 
 
@@ -20,10 +23,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Configure CORS with typed settings
+cors_origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else [settings.CORS_ORIGINS]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=cors_origins or ["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

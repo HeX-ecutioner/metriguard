@@ -57,7 +57,7 @@ async def inspect_package(
                 image_path=image_storage_key,
             )
             db_session.add(record)
-            await db_session.commit()
+            db_session.commit()
         except Exception as db_err:
             logger.warning(f"Could not persist inspection record to DB: {db_err}")
 
