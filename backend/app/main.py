@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings, ensure_directories
-from app.api import inspect, health, inspections, ocr, extraction
+from app.api import inspect, health, inspections, ocr, extraction, dashboard
 from app.db.database import Base, engine
 import app.db.models
 
@@ -40,6 +40,8 @@ app.include_router(inspect.router, prefix="/api/v1")
 app.include_router(inspections.router, prefix="/api/v1")
 app.include_router(ocr.router, prefix="/api/v1")
 app.include_router(extraction.router, prefix="/api/v1")
+app.include_router(dashboard.router, prefix="/api/v1")
+
 
 
 @app.get("/")

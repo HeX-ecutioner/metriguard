@@ -60,12 +60,15 @@ def create_inspection_session(
 def list_inspection_sessions(
     skip: int = 0,
     limit: int = 50,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
-    Retrieves recent inspection sessions.
+    Retrieves recent inspection sessions with optional status and text search filtering.
     """
-    return list_inspections(db=db, skip=skip, limit=limit)
+    return list_inspections(db=db, skip=skip, limit=limit, status_filter=status, search=search)
+
 
 
 @router.post(

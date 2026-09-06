@@ -5,6 +5,7 @@ Encapsulates database queries and transactions so route handlers do not contain 
 
 import json
 from typing import List, Optional, Any, Dict
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from app.db.models import (
     Inspection,
@@ -52,15 +53,103 @@ def get_inspection(db: Session, inspection_id: int) -> Optional[Inspection]:
     )
 
 
-def list_inspections(db: Session, skip: int = 0, limit: int = 100) -> List[Inspection]:
-    """Retrieves paginated inspection sessions."""
-    return (
+def list_inspections(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    status_filter: Optional[str] = None,
+    search: Optional[str] = None
+) -> List[Inspection]:
+    """Retrieves paginated inspection sessions with eager loading and optional filtering."""
+    query = (
         db.query(Inspection)
-        .order_by(Inspection.id.desc())
+        .options(
+            joinedload(Inspection.images),
+            joinedload(Inspection.declarations),
+            joinedload(Inspection.violations),
+            joinedload(Inspection.result),
+        )
+    )
+    if status_filter:
+        try:
+            enum_val = InspectionStatus(status_filter.upper())
+            query = query.filter(Inspection.status == enum_val)
+        except ValueError:
+            pass
+
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            (Inspection.product_name.ilike(search_pattern)) |
+            (Inspection.notes.ilike(search_pattern))
+        )
+
+    return (
+        query.order_by(Inspection.id.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
+
+
+
+def get_dashboard_stats(db: Session) -> Dict[str, Any]:
+    """Calculates real-time inspection metrics and top violations directly from SQLite."""
+    total_inspections = db.query(func.count(Inspection.id)).scalar() or 0
+    compliant_count = (
+        db.query(func.count(Inspection.id))
+        .filter(Inspection.status == InspectionStatus.COMPLIANT)
+        .scalar()
+        or 0
+    )
+    non_compliant_count = (
+        db.query(func.count(Inspection.id))
+        .filter(Inspection.status == InspectionStatus.NON_COMPLIANT)
+        .scalar()
+        or 0
+    )
+    manual_review_count = (
+        db.query(func.count(Inspection.id))
+        .filter(Inspection.status == InspectionStatus.MANUAL_REVIEW)
+        .scalar()
+        or 0
+    )
+
+    # Top violations: group by rule_id, title, severity, order by count desc, limit 5
+    violation_rows = (
+        db.query(
+            Violation.rule_id,
+            Violation.title,
+            Violation.severity,
+            func.count(Violation.id).label("count")
+        )
+        .group_by(Violation.rule_id, Violation.title, Violation.severity)
+        .order_by(func.count(Violation.id).desc())
+        .limit(5)
+        .all()
+    )
+
+    top_violations = [
+        {
+            "rule_id": row.rule_id,
+            "title": row.title,
+            "severity": row.severity.value if hasattr(row.severity, "value") else str(row.severity),
+            "count": row.count,
+        }
+        for row in violation_rows
+    ]
+
+    recent_inspections = list_inspections(db, skip=0, limit=10)
+
+    return {
+        "total_inspections": total_inspections,
+        "compliant_inspections": compliant_count,
+        "non_compliant_inspections": non_compliant_count,
+        "manual_review_inspections": manual_review_count,
+        "top_violations": top_violations,
+        "recent_inspections": recent_inspections,
+    }
+
 
 
 def update_inspection_status(
