@@ -52,6 +52,7 @@ class PackageImageResponse(BaseModel):
     confidence_score: Optional[float] = None
     extracted_texts: Optional[List[str]] = None
     violations: Optional[List[RuleViolation]] = None
+    image_url: Optional[str] = None
 
 
 class DeclarationDetailResponse(BaseModel):
@@ -73,6 +74,10 @@ class ViolationDetailResponse(BaseModel):
     explanation: str
     severity: str
     confidence: Optional[float] = None
+    evidence_image_id: Optional[int] = None
+    evidence_bounding_box: Optional[str] = None
+    measured_value: Optional[str] = None
+    expected_value: Optional[str] = None
 
 
 class InspectionResultDetailResponse(BaseModel):

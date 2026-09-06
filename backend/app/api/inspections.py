@@ -1,29 +1,27 @@
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, status
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
+
 from app.core.config import settings
 from app.db.database import get_db
 from app.db.crud import (
     create_inspection,
     get_inspection,
-    add_package_image,
-    add_declaration,
-    add_violation,
-    set_inspection_result,
-    update_inspection_status,
+    list_inspections,
 )
-from app.db.models import InspectionStatus
-from app.services.ai_extractor import extract_information
-from app.services.rule_engine import evaluate_compliance
 from app.models.schemas import (
     InspectionCreateRequest,
     InspectionDetailResponse,
     PackageImageResponse,
 )
-from app.services.image_validator import validate_and_decode_image, ImageValidationError
-from app.services.storage import get_storage_service, StorageError
+from app.services.storage import get_storage_service
+from app.services.inspection_orchestrator import (
+    InspectionOrchestrator,
+    get_inspection_orchestrator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,32 +52,43 @@ def create_inspection_session(
     return inspection
 
 
+@router.get(
+    "/inspections",
+    response_model=List[InspectionDetailResponse],
+    summary="List inspection sessions"
+)
+def list_inspection_sessions(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieves recent inspection sessions.
+    """
+    return list_inspections(db=db, skip=skip, limit=limit)
+
+
 @router.post(
     "/inspections/{inspection_id}/images",
     response_model=PackageImageResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Upload and validate a commodity package image"
+    summary="Upload and orchestrate Legal Metrology inspection for a package image"
 )
 async def upload_inspection_image(
     inspection_id: int,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    orchestrator: InspectionOrchestrator = Depends(get_inspection_orchestrator)
 ):
     """
-    Uploads an image to an existing inspection session:
-    - Validates MIME type, extension, size, image decoding, and dimensions
-    - Securely stores the file in local storage with generated UUID filename
-    - Saves image metadata in SQLite (without storing raw binary data in DB)
+    Uploads a package image to an inspection session and executes the full orchestrated pipeline:
+    1. Validates image MIME, dimensions, and size.
+    2. Stores the image securely.
+    3. Executes OCR text recognition.
+    4. Extracts structured Legal Metrology declarations.
+    5. Runs deterministic regulatory rule evaluation.
+    6. Persists findings, violations, and synthesized outcomes in SQLite.
     """
-    # 1. Verify inspection exists
-    inspection = get_inspection(db=db, inspection_id=inspection_id)
-    if not inspection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Inspection with ID {inspection_id} not found."
-        )
-
-    # 2. Read file bytes
     try:
         content = await file.read()
     except Exception as e:
@@ -92,127 +101,12 @@ async def upload_inspection_image(
     original_filename = file.filename or "uploaded_package.jpg"
     content_type = file.content_type or ""
 
-    # 3. Validate image
-    try:
-        validated = validate_and_decode_image(
-            content=content,
-            original_filename=original_filename,
-            content_type=content_type,
-            max_size_mb=settings.MAX_UPLOAD_SIZE_MB
-        )
-    except ImageValidationError as e:
-        raise HTTPException(
-            status_code=e.status_code,
-            detail=e.detail
-        )
-
-    # 4. Save file to storage
-    storage = get_storage_service()
-    try:
-        # Pass sanitized basename to storage service
-        safe_original = Path(original_filename).name
-        file_key = await storage.save_file(filename=safe_original, content=content)
-    except StorageError as se:
-        logger.error(f"Storage failure for inspection {inspection_id}: {se.detail}")
-        raise HTTPException(
-            status_code=se.status_code,
-            detail=se.detail
-        )
-
-    # 5. Persist image metadata into database
-    try:
-        package_image = add_package_image(
-            db=db,
-            inspection_id=inspection_id,
-            file_path=file_key,
-            original_filename=safe_original,
-            mime_type=validated.mime_type,
-            file_size=validated.file_size,
-            width=validated.width,
-            height=validated.height
-        )
-    except Exception as db_err:
-        logger.error(f"Failed to record image metadata in database: {db_err}")
-        # Clean up stored file if database insertion fails
-        await storage.delete_file(file_key)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to record image metadata in database."
-        )
-
-    # 6. AI text extraction (OCR with lightweight/Paddle/mock fallback)
-    try:
-        extracted_data = extract_information(content)
-    except Exception as e:
-        logger.error(f"Error during AI extraction for image {package_image.id}: {e}")
-        extracted_data = []
-
-    # 7. Evaluate Legal Metrology compliance
-    try:
-        compliance_result = evaluate_compliance(extracted_data)
-    except Exception as e:
-        logger.error(f"Error during compliance evaluation for image {package_image.id}: {e}")
-        compliance_result = None
-
-    # 8. Persist Declarations, Violations, Result, and Update Inspection Status
-    if compliance_result:
-        try:
-            for item in extracted_data:
-                add_declaration(
-                    db=db,
-                    inspection_id=inspection_id,
-                    declaration_type="extracted_text",
-                    extracted_value=item.get("text", "") if isinstance(item, dict) else str(item),
-                    confidence=item.get("confidence") if isinstance(item, dict) else None,
-                    source_image_id=package_image.id,
-                    bounding_box=item.get("box") if isinstance(item, dict) else None,
-                )
-
-            for v in compliance_result.violations:
-                add_violation(
-                    db=db,
-                    inspection_id=inspection_id,
-                    rule_id=v.rule_id,
-                    title=v.rule_id,
-                    explanation=v.explanation,
-                    confidence=v.confidence,
-                    evidence_image_id=package_image.id,
-                )
-
-            try:
-                status_enum = InspectionStatus(compliance_result.status)
-            except ValueError:
-                status_enum = InspectionStatus.MANUAL_REVIEW
-
-            set_inspection_result(
-                db=db,
-                inspection_id=inspection_id,
-                final_status=status_enum,
-                summary=f"Inspection completed with status {status_enum.value}. Detected {len(compliance_result.violations)} violations."
-            )
-            update_inspection_status(
-                db=db,
-                inspection_id=inspection_id,
-                status=status_enum,
-                overall_confidence=compliance_result.confidence_score
-            )
-        except Exception as persist_err:
-            logger.warning(f"Failed to persist compliance outcome to database: {persist_err}")
-
-    return PackageImageResponse(
-        id=package_image.id,
-        inspection_id=package_image.inspection_id,
-        file_path=package_image.file_path,
-        original_filename=package_image.original_filename,
-        mime_type=package_image.mime_type,
-        file_size=package_image.file_size,
-        width=package_image.width,
-        height=package_image.height,
-        created_at=package_image.created_at,
-        status=compliance_result.status if compliance_result else None,
-        confidence_score=compliance_result.confidence_score if compliance_result else None,
-        extracted_texts=compliance_result.extracted_texts if compliance_result else None,
-        violations=compliance_result.violations if compliance_result else None,
+    return await orchestrator.process_image_upload(
+        db=db,
+        inspection_id=inspection_id,
+        file_bytes=content,
+        filename=original_filename,
+        content_type=content_type,
     )
 
 
@@ -226,7 +120,7 @@ def get_inspection_details(
     db: Session = Depends(get_db)
 ):
     """
-    Retrieves an inspection session along with all uploaded images and current status.
+    Retrieves an inspection session along with all uploaded images, declarations, violations, and results.
     """
     inspection = get_inspection(db=db, inspection_id=inspection_id)
     if not inspection:
@@ -235,3 +129,53 @@ def get_inspection_details(
             detail=f"Inspection with ID {inspection_id} not found."
         )
     return inspection
+
+
+@router.get(
+    "/inspections/{inspection_id}/images/{image_id}/file",
+    summary="Retrieve the original uploaded package image file"
+)
+async def get_inspection_image_file(
+    inspection_id: int,
+    image_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Serves the original package image file for visual verification and audit evidence.
+    """
+    inspection = get_inspection(db=db, inspection_id=inspection_id)
+    if not inspection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Inspection with ID {inspection_id} not found."
+        )
+
+    target_image = next((img for img in inspection.images if img.id == image_id), None)
+    if not target_image:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Image with ID {image_id} not found in inspection {inspection_id}."
+        )
+
+    storage = get_storage_service()
+    local_path = storage.get_file_path(target_image.file_path)
+    if local_path and Path(local_path).exists():
+        return FileResponse(
+            path=str(local_path),
+            media_type=target_image.mime_type,
+            filename=target_image.original_filename
+        )
+
+    # Fallback to byte retrieval
+    file_bytes = await storage.get_file(target_image.file_path)
+    if not file_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image file not found in storage."
+        )
+
+    return Response(
+        content=file_bytes,
+        media_type=target_image.mime_type,
+        headers={"Content-Disposition": f'inline; filename="{target_image.original_filename}"'}
+    )

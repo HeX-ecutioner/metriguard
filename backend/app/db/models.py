@@ -124,6 +124,10 @@ class PackageImage(Base):
     # Relationships
     inspection = relationship("Inspection", back_populates="images")
 
+    @property
+    def image_url(self) -> str:
+        return f"/api/v1/inspections/{self.inspection_id}/images/{self.id}/file"
+
 
 class Declaration(Base):
     """
