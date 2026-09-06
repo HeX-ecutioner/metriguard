@@ -18,23 +18,48 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
   const [historyList, setHistoryList] = useState<Inspection[]>([]);
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
 
-  const fetchStats = useCallback(async () => {
+  const handleRetry = () => {
     setLoading(true);
     setError(null);
-    try {
-      const data = await apiClient.getDashboardStats();
-      setStats(data);
-      setHistoryList(data.recent_inspections || []);
-    } catch (err: any) {
-      setError(err?.detail || 'Failed to connect to backend inspection service.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    apiClient
+      .getDashboardStats()
+      .then((data) => {
+        setStats(data);
+        setHistoryList(data.recent_inspections || []);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        const apiErr = err as { detail?: string };
+        setError(apiErr?.detail || 'Failed to connect to backend inspection service.');
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    let cancelled = false;
+    apiClient
+      .getDashboardStats()
+      .then((data) => {
+        if (!cancelled) {
+          setStats(data);
+          setHistoryList(data.recent_inspections || []);
+          setLoading(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const apiErr = err as { detail?: string };
+          setError(apiErr?.detail || 'Failed to connect to backend inspection service.');
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
 
   // Handle history filtering
   const handleFilterHistory = useCallback(async (searchVal: string, statusVal: string) => {
@@ -107,7 +132,7 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: '420px', margin: '0 auto 1.5rem' }}>
           {error}
         </p>
-        <button className="btn" onClick={fetchStats} style={{ background: 'var(--primary-color)' }}>
+        <button className="btn" onClick={handleRetry} style={{ background: 'var(--primary-color)' }}>
           🔄 Retry Connection
         </button>
       </div>

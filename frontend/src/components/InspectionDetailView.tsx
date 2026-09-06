@@ -14,32 +14,39 @@ const InspectionDetailView: React.FC<Props> = ({
   initialInspection,
   onBack,
 }) => {
-  const [inspection, setInspection] = useState<Inspection | null>(initialInspection || null);
+  const [fetchedInspection, setFetchedInspection] = useState<Inspection | null>(null);
   const [loading, setLoading] = useState<boolean>(!initialInspection && !!inspectionId);
   const [error, setError] = useState<string | null>(null);
 
+  const inspection = initialInspection || fetchedInspection;
+
   useEffect(() => {
-    if (initialInspection) {
-      setInspection(initialInspection);
-      setLoading(false);
+    if (initialInspection || !inspectionId) {
       return;
     }
 
-    if (inspectionId) {
-      setLoading(true);
-      setError(null);
-      apiClient
-        .getInspection(inspectionId)
-        .then((data) => {
-          setInspection(data);
+    let cancelled = false;
+    apiClient
+      .getInspection(inspectionId)
+      .then((data) => {
+        if (!cancelled) {
+          setFetchedInspection(data);
           setLoading(false);
-        })
-        .catch((err) => {
-          setError(err?.detail || `Failed to load inspection #${inspectionId}`);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const apiErr = err as { detail?: string };
+          setError(apiErr?.detail || `Failed to load inspection #${inspectionId}`);
           setLoading(false);
-        });
-    }
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [inspectionId, initialInspection]);
+
 
   if (loading) {
     return (
