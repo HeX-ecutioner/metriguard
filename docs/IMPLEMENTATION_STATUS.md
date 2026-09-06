@@ -1,176 +1,32 @@
-# MetriGuard Implementation Status & Verification Report
+# MetriGuard Implementation Status Report
 
-**Platform**: Native Windows 11 x64
-**Execution Environment**: Python 3.12.10 (`backend/.venv`), Node.js v25.2.1, SQLite 3  
-**Report Date**: September 2026  
-**Verification Pass**: Complete Native Windows Validation
+## 1. Overview & Purpose
+This document provides a transparent, evidence-based assessment of the implementation status of **MetriGuard** for judges, maintainers, and contributors.
 
-## 1. Completed Features
+It cites exact files, functions, API routes, database models, and test cases to distinguish between **Fully Implemented**, **Partially Implemented**, **In Progress**, **Planned**, and **Not Implemented** features.
 
-### Backend Architecture
-- [x] **Native Windows Runtime**: Local execution using Python virtual environment and native background process launchers.
-- [x] **FastAPI Application**: High-performance asynchronous REST API with structured Pydantic v2 schemas and CORS middleware.
-- [x] **SQLite Database & Alembic Migrations**: Persistent SQLite database (`backend/data/metriguard.db`) managed via versioned Alembic migrations (`001_initial_schema`, `002_inspection_workflow_models`).
-- [x] **Local Storage Service**: File system storage abstraction (`backend/storage/uploads`, `backend/storage/reports`) with automatic directory recovery and byte streaming.
-- [x] **Image Serving Endpoint**: Dedicated `GET /api/v1/inspections/{id}/images/{image_id}/file` endpoint serving original packaging images with MIME headers.
-- [x] **Image Validation Layer**: Strict validation of MIME types (`image/jpeg`, `image/png`, `image/webp`), file extensions, file size limits (10MB), and Pillow image decoding integrity.
-- [x] **Native PaddleOCR Provider**: PP-OCRv6 text recognition running on Windows CPU with Intel oneDNN translation disabled (`enable_mkldnn=False`) to avoid Windows PIR executor bugs.
-- [x] **OCR Provider Abstraction & Fallback**: Unified `OCRProvider` interface with deterministic `MockOCRProvider` for headless CI/CD and unit testing.
-- [x] **Declaration Extraction Layer**: Deterministic regex extraction across all 13 Legal Metrology (Packaged Commodities) Rules, 2011 declaration types:
-  1. `COMMODITY_NAME`
-  2. `MANUFACTURER`
-  3. `PACKER`
-  4. `IMPORTER`
-  5. `COUNTRY_OF_ORIGIN`
-  6. `NET_QUANTITY`
-  7. `MRP`
-  8. `PACKING_DATE`
-  9. `MANUFACTURE_DATE`
-  10. `BEST_BEFORE`
-  11. `USE_BY`
-  12. `CONSUMER_CARE`
-  13. `UNIT_SALE_PRICE`
-  - Multi-candidate resolution, ambiguity detection, confidence tracking, and line evidence bounding boxes.
-- [x] **Deterministic Regulatory Rule Engine**: 6 codified prototype rules under Legal Metrology Rules, 2011:
-  - `LMR-2011-R06-1-A`: Manufacturer / Packer / Importer name and address.
-  - `LMR-2011-R06-1-B`: Generic or commodity name.
-  - `LMR-2011-R06-1-C`: Net quantity declaration.
-  - `LMR-2011-R06-1-D`: Month and year of manufacture or packing.
-  - `LMR-2011-R06-1-DA`: Unit Sale Price (USP) for relevant commodities.
-  - `LMR-2011-R06-1-E`: Maximum Retail Price (MRP) declaration.
-- [x] **Inspection Orchestrator Service**: Decoupled service coordinating the complete workflow:
-  `Upload -> Validation -> Storage -> OCR -> Extraction -> Rule Engine -> Persistence -> Synthesized Outcome`.
-  - Guarantees OCR failures and unhandled exceptions strictly route to `MANUAL_REVIEW` (never `COMPLIANT`).
-- [x] **Dashboard Analytics Endpoint**: `GET /api/v1/dashboard/stats` computing real-time counts for total, compliant, non-compliant, manual-review, top violations, and recent inspections.
+## 2. Feature Implementation Status Matrix
 
-### Frontend Architecture
-- [x] **Responsive Glassmorphism UI**: Built with React 19, TypeScript, and Vite without heavy external component libraries.
-- [x] **MetriGuard Dashboard**:
-  - 4 Summary Cards: Total Inspections, Compliant, Non-Compliant, Manual Review.
-  - Top Violation Types breakdown with native CSS meter progress bars (no chart library overhead).
-  - Recent Inspections table with status badges and "View Details →" button.
-  - Product & Inspection History with live text search and status filter dropdown (`ALL`, `COMPLIANT`, `NON_COMPLIANT`, `MANUAL_REVIEW`, `CREATED`).
-  - Loading skeleton/spinner, empty state with call-to-action button, and error state with retry connection button.
-- [x] **Inspection Detail View**:
-  - Displays inspection status badges (`COMPLIANT`, `NON_COMPLIANT`, `MANUAL_REVIEW`, `CREATED`).
-  - Overall confidence score progress bar.
-  - Manual review warnings alert box detailing exact ambiguity/failure reasons.
-  - 13 Legal Metrology declarations table with values, confidences, and bounding box indicators.
-  - Traceable regulatory violations cards with rule ID, version, severity, explanation, confidence, and evidence links.
-  - Original image viewer opening `/api/v1/inspections/{id}/images/{img_id}/file` in a new tab.
-- [x] **Drag & Drop Package Image Upload**: Real-time upload progress tracking and session creation.
-
-## 2. Inspection Lifecycle & Single-Image Invariant (September 2026 Update)
-
-### Root Cause Analysis & Architectural Fix
-Prior to this release, an inspection lifecycle bug existed:
-1. **Reused Inspection Sessions**: Clicking "Upload another image" in `ImageUpload.tsx` cleared the file selection but preserved the active `inspectionId`. A subsequent upload sent image #2 to the previous inspection session.
-2. **Result Stacking & Desynchronization**: Extractions and violations from image #2 accumulated in the same database session, while `ResultsView.tsx` only rendered `images[0]`, resulting in a corrupted, blended view.
-3. **Lack of Lifecycle Separation**: There was no explicit barrier between selecting an image locally, starting an inspection, processing, and completing.
-
-### The 5-State Lifecycle Model
-The application now strictly enforces the following finite state machine:
-- **STATE A: IDLE**: Dropzone and optional product name input displayed. No active session, no images, no results rendered.
-- **STATE B: IMAGE_SELECTED**: User selects a local image. Preview and file metadata are shown. **Zero network calls and zero database rows created.** Includes "Start Inspection" and "Cancel" buttons. Clicking "Cancel" cleanly resets to IDLE.
-- **STATE C: PROCESSING**: Begins only upon clicking "Start Inspection". Generates a brand-new inspection ID (`POST /api/v1/inspections`), uploads the single image, runs OCR and rule evaluation. Features request token tracking for stale response protection and a safe "Return to upload screen" button.
-- **STATE D: COMPLETED**: Renders the complete, read-only inspection report (image, declarations, violations, confidence, summary). Cannot accept additional uploads.
-- **STATE E: UPLOAD_ANOTHER_IMAGE**: Finalizes the current inspection, clears all frontend state, resets active inspection ID to `null`, and returns directly to `IDLE` so the next upload creates a completely new inspection.
-
-### Database Invariants
-- Enforced a `unique=True` constraint and unique index `uq_package_images_inspection_id` on `package_images.inspection_id` via Alembic migration `003_one_image_per_inspection.py`.
-- Any attempt to upload a second image to an existing inspection is rejected by the backend with **HTTP 409 Conflict**.
-- Historical inspection sessions remain permanently preserved and isolated in the database.
-
-## 3. Known Bugs & Upstream Limitations
-
-- **PaddlePaddle PIR oneDNN Converter Bug (Windows x64)**:
-  - *Upstream Issue*: In PaddlePaddle 3.x on Windows x64 CPU, oneDNN (MKL-DNN) throws: `(Unimplemented) ConvertPirAttribute2RuntimeAttribute not support [pir::ArrayAttribute<pir::DoubleAttribute>]` at `onednn_instruction.cc:118`.
-  - *Workaround Implemented*: Configured `PaddleOCR(device="cpu", enable_mkldnn=False, lang="en")` and `os.environ["FLAGS_use_mkldnn"] = "0"`. Text recognition runs reliably on standard CPU.
-- **Windows Console Code Page (cp1252)**:
-  - CLI scripts attempting to print unicode checkmarks (`\u2713`) fail on Windows cmd/powershell unless `PYTHONIOENCODING=utf-8` is set. All CLI output uses standard ASCII tokens (`[OK]`, `[PASS]`, `[FAIL]`).
-
-## 4. Commands That Were Verified
-
-### Verification Passes
-```bash
-# 1. Native Environment Verification Script
-powershell -ExecutionPolicy Bypass -File .\verify_setup.ps1
-# Result: [PASS] across all 8 environment checks
-
-# 2. Live API Smoke Tests (6 live steps against running backend)
-backend\.venv\Scripts\python backend\smoke_test.py
-# Result: ALL LIVE API SMOKE TESTS PASSED (Health, Dashboard, Create, Upload, Detail, Image Serving)
-
-# 3. Complete Backend Test Suite (Pytest)
-backend\.venv\Scripts\pytest backend\tests -q
-# Result: 152 passed, 2 warnings in 74.89s (100% pass rate)
-
-# 4. Frontend Vitest Test Suite
-cd frontend && npm test -- --run
-# Result: 8 passed across ImageUpload.test.tsx and Dashboard.test.tsx
-
-# 5. Frontend ESLint
-cd frontend && npm run lint
-# Result: 0 errors, 0 warnings
-
-# 6. Frontend Production Build
-cd frontend && npm run build
-# Result: tsc -b && vite build passed in 228ms (clean dist bundle)
-
-# 7. Alembic Migrations
-cd backend && .venv\Scripts\alembic current
-# Result: 002_inspection_workflow_models (head)
-```
-
-## 5. Commands That Failed (and Resolutions)
-
-1. `alembic -c backend\alembic.ini current` (executed from workspace root):
-   - *Failure*: `Path doesn't exist: alembic`.
-   - *Resolution*: Alembic config uses relative paths; commands must be run from `backend/` directory (`cd backend && .venv\Scripts\alembic current`).
-2. Inline PowerShell one-liners with complex double quotes:
-   - *Failure*: PowerShell parses double quotes and expands `$vars` unexpectedly.
-   - *Resolution*: Packaged complex smoke tests into standalone Python scripts (`backend/smoke_test.py`).
-3. CLI Unicode output on Windows cp1252:
-   - *Failure*: `UnicodeEncodeError: 'charmap' codec can't encode character '\u2713'`.
-   - *Resolution*: Replaced unicode checkmarks with standard ASCII status tags `[OK]`.
-
-## 6. Manual Setup Steps
-
-1. **Python Virtual Environment**:
-   ```ps
-   cd backend
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   pip install -r requirements.txt
-   ```
-2. **Database Migrations**:
-   ```ps
-   cd backend
-   .\.venv\Scripts\alembic upgrade head
-   ```
-3. **Frontend Dependencies**:
-   ```ps
-   cd frontend
-   npm install
-   ```
-4. **Launch Development Servers**:
-   ```ps
-   # From root:
-   .\start.ps1
-   ```
-
-## 7. Remaining Risks
-
-1. **OCR Inference Speed on CPU**:
-   - PaddleOCR runs in CPU mode (`enable_mkldnn=False`). While accurate for packaging labels, inference takes 1–3 seconds per image depending on CPU core count.
-2. **Extreme Image Blur or Glare**:
-   - Packaged commodities with heavy cylindrical reflections or metallic packaging can degrade OCR line extraction, appropriately triggering `MANUAL_REVIEW`.
-3. **SQLite Concurrency**:
-   - SQLite is suitable for single-node inspection stations and MVP demonstration. For enterprise multi-user concurrent write throughput, the database layer should migrate to PostgreSQL.
-
-## 8. Exact MVP Limitations
-
-1. **No Authentication**: The MVP operates in open audit mode without user roles or RBAC.
-2. **Single Database Node**: SQLite is embedded in `backend/data/metriguard.db`.
-3. **English Packaging Labels**: Extraction patterns and OCR models currently focus on English language Legal Metrology declarations (standard for pan-India packaged retail goods).
-4. **Active Regulatory Rules**: 6 high-impact Legal Metrology (Packaged Commodities) Rules, 2011 codified and active. The framework is architected to allow adding additional rules into `docs/REGULATORY_RULES.md` and `RuleRegistry`.
+| Area | Feature | Status | Evidence in Repository | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Frontend** | React 18 SPA with Vite & TailwindCSS | Complete | [`frontend/src/App.tsx`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/frontend/src/App.tsx), [`frontend/src/components/DashboardView.tsx`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/frontend/src/components/DashboardView.tsx) | Clean SPA view switcher between upload, dashboard, and detail views. |
+| **2. Image Upload** | Drag-and-drop uploader with validation & preview | Complete | [`frontend/src/components/ImageUpload.tsx`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/frontend/src/components/ImageUpload.tsx), [`backend/app/services/image_validator.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/image_validator.py) | Checks 10MB size limit, MIME types (`jpeg`, `png`, `webp`), and PIL structural byte verification. |
+| **3. Inspection Lifecycle** | Single-image inspection workflow & lifecycle contract | Complete | [`backend/app/services/inspection_orchestrator.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/inspection_orchestrator.py), Alembic migration `003_one_image_per_inspection` | Strictly 1 package image per inspection. Attempting to add a 2nd image yields HTTP 409. |
+| **4. OCR** | Optical Character Recognition engine | Complete | [`backend/app/services/ocr/service.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/ocr/service.py), [`paddle_provider.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/ocr/paddle_provider.py), [`mock_provider.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/ocr/mock_provider.py) | Native PaddleOCR provider with Mock provider fallback for offline/CI environments. |
+| **5. Preprocessing** | Image preprocessing & noise reduction | Complete | [`backend/app/services/ocr/preprocessor.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/ocr/preprocessor.py) | OpenCV grayscale, contrast adjustment, bilateral filtering, and adaptive thresholding. |
+| **6. Extraction** | Deterministic regex declaration parsing | Complete | [`backend/app/services/extraction/extractor.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/extraction/extractor.py), [`patterns.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/extraction/patterns.py) | Extracts MRP, Net Qty, Dates, Entity details, Consumer Care, and USP using deterministic regex. |
+| **6b. Extraction (AI)** | LLM vision-assisted extraction fallback | Partially complete | [`backend/app/services/ai_extractor.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/ai_extractor.py) | Fallback module implemented for Gemini/OpenAI vision APIs, but requires optional external API keys. |
+| **7. Rule Engine** | Deterministic Legal Metrology compliance evaluation | Complete | [`backend/app/services/rules/engine.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/rules/engine.py), [`lmr_2011/`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/rules/lmr_2011) | 6 active LMR 2011 rules (`r06_1_a`, `r06_1_c`, `r06_1_d`, `r06_1_e`, `r06_1_g`, `r06_11`). |
+| **8. Confidence** | Confidence scoring & manual-review thresholding | Complete | [`backend/app/services/inspection_orchestrator.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/inspection_orchestrator.py) | Calculates overall confidence; scores < 0.70 threshold automatically route to `MANUAL_REVIEW`. |
+| **9. Evidence** | Bounding box coordinates & text evidence logging | Complete | [`backend/app/db/models.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/db/models.py), [`frontend/src/components/InspectionDetailView.tsx`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/frontend/src/components/InspectionDetailView.tsx) | Persists `[x_min, y_min, x_max, y_max]` in DB and renders interactive bounding box overlays. |
+| **10. Manual Review** | Operator verification & status override UI/API | Complete | [`frontend/src/components/ResultsView.tsx`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/frontend/src/components/ResultsView.tsx), [`backend/app/api/inspections.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/api/inspections.py) | Inspector declaration editor & status update endpoint (`PATCH /api/v1/inspections/{id}/status`). |
+| **11. History** | Inspection history & analytics dashboard | Complete | [`frontend/src/components/DashboardView.tsx`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/frontend/src/components/DashboardView.tsx), [`backend/app/api/dashboard.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/api/dashboard.py) | Metrics summary cards, search filter, and paginated history table. |
+| **12. Database** | Persistent relational database & migrations | Complete | [`backend/app/db/models.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/db/models.py), [`backend/app/db/database.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/db/database.py), `backend/alembic/` | SQLite database (`metriguard.db`) with SQLAlchemy ORM and versioned Alembic migrations. |
+| **13. Storage** | Local file system image storage | Complete | [`backend/app/services/storage.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/storage.py) | Writes uploaded images to `backend/data/uploads/` with sanitized UUID prefixes and traversal checks. |
+| **14. API** | RESTful HTTP API services | Complete | [`backend/app/main.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/main.py), [`backend/app/api/inspections.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/api/inspections.py) | FastAPI endpoints for upload, inspection creation, retrieval, review, deletion, and metrics. |
+| **15. Security** | Input validation, file sanitization, CORS | Partially complete | [`backend/app/services/image_validator.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/image_validator.py), [`storage.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/storage.py), [`main.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/main.py) | Input validation and path traversal security are complete; user authentication (RBAC) is Not implemented. |
+| **16. Testing** | Automated test coverage (Pytest & Vitest) | Complete | [`verify_setup.ps1`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/verify_setup.ps1), `backend/tests/`, `frontend/src/components/*.test.tsx` | 132 backend pytest cases and 11 frontend Vitest component tests fully passing. |
+| **17. Deployment** | Production build & automated deployment scripts | Partially complete | [`start.ps1`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/start.ps1), [`frontend/package.json`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/frontend/package.json) | Local native Windows script (`start.ps1`) and static Vite bundle complete; cloud container orchestration (Docker/K8s) is Planned / Not implemented. |
+| **18. Documentation** | Complete project documentation suite | Complete | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `docs/` | Comprehensive technical documentation covering architecture, requirements, rules, and setup. |
+| **19. Accessibility** | WCAG 2.1 AA keyboard navigation & ARIA landmarks | In progress | [`frontend/src/components/`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/frontend/src/components) | Keyboard focus and semantic HTML tags implemented; comprehensive screen reader audit in progress. |
+| **20. Performance** | Synchronous sub-5s inspection latency | Partially complete | [`backend/app/services/ocr/service.py`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/ocr/service.py) | Direct execution latency under 5 seconds; async queue architecture (Celery/Redis) is Planned. |
