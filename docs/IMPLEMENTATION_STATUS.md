@@ -60,10 +60,26 @@
   - Original image viewer opening `/api/v1/inspections/{id}/images/{img_id}/file` in a new tab.
 - [x] **Drag & Drop Package Image Upload**: Real-time upload progress tracking and session creation.
 
-## 2. Partially Completed Features
+## 2. Inspection Lifecycle & Single-Image Invariant (September 2026 Update)
 
-- **Multi-Image Package Stitching**: Multiple images can be uploaded to a single inspection session, but declaration extraction currently analyzes images individually rather than cross-stitching a 360-degree composite cylindrical package wrap.
-- **Physical Size & Font Height Verification**: The rule engine verifies declaration existence, unit consistency, and price formats; physical font millimeter verification requires millimeter-to-pixel calibration markers on uploaded labels.
+### Root Cause Analysis & Architectural Fix
+Prior to this release, an inspection lifecycle bug existed:
+1. **Reused Inspection Sessions**: Clicking "Upload another image" in `ImageUpload.tsx` cleared the file selection but preserved the active `inspectionId`. A subsequent upload sent image #2 to the previous inspection session.
+2. **Result Stacking & Desynchronization**: Extractions and violations from image #2 accumulated in the same database session, while `ResultsView.tsx` only rendered `images[0]`, resulting in a corrupted, blended view.
+3. **Lack of Lifecycle Separation**: There was no explicit barrier between selecting an image locally, starting an inspection, processing, and completing.
+
+### The 5-State Lifecycle Model
+The application now strictly enforces the following finite state machine:
+- **STATE A: IDLE**: Dropzone and optional product name input displayed. No active session, no images, no results rendered.
+- **STATE B: IMAGE_SELECTED**: User selects a local image. Preview and file metadata are shown. **Zero network calls and zero database rows created.** Includes "Start Inspection" and "Cancel" buttons. Clicking "Cancel" cleanly resets to IDLE.
+- **STATE C: PROCESSING**: Begins only upon clicking "Start Inspection". Generates a brand-new inspection ID (`POST /api/v1/inspections`), uploads the single image, runs OCR and rule evaluation. Features request token tracking for stale response protection and a safe "Return to upload screen" button.
+- **STATE D: COMPLETED**: Renders the complete, read-only inspection report (image, declarations, violations, confidence, summary). Cannot accept additional uploads.
+- **STATE E: UPLOAD_ANOTHER_IMAGE**: Finalizes the current inspection, clears all frontend state, resets active inspection ID to `null`, and returns directly to `IDLE` so the next upload creates a completely new inspection.
+
+### Database Invariants
+- Enforced a `unique=True` constraint and unique index `uq_package_images_inspection_id` on `package_images.inspection_id` via Alembic migration `003_one_image_per_inspection.py`.
+- Any attempt to upload a second image to an existing inspection is rejected by the backend with **HTTP 409 Conflict**.
+- Historical inspection sessions remain permanently preserved and isolated in the database.
 
 ## 3. Known Bugs & Upstream Limitations
 
