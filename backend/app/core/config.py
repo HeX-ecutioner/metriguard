@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8000
     USE_MOCK_EXTRACTOR: bool = False
+    OCR_PROVIDER: str = "auto"
+    OCR_CONFIDENCE_THRESHOLD: float = 0.5
+    OCR_MAX_IMAGE_DIMENSION: int = 2400
+    OCR_TIMEOUT_SECONDS: float = 30.0
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
