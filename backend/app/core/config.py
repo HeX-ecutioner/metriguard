@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     )
 
     APP_ENV: str = "development"
-    DATABASE_URL: str = f"sqlite:///{(BACKEND_DIR / 'data' / 'metriguard.db').as_posix()}"
-    STORAGE_PATH: str = str(BACKEND_DIR / "storage")
+    DATABASE_URL: str = "sqlite:///./data/metriguard.db"
+    STORAGE_PATH: str = "./storage"
     MAX_UPLOAD_SIZE_MB: int = 10
     CORS_ORIGINS: Union[List[str], str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     HOST: str = "127.0.0.1"
@@ -39,19 +39,37 @@ class Settings(BaseSettings):
         """Returns storage directory resolved relative to backend root if given as relative path."""
         path = Path(self.STORAGE_PATH)
         if not path.is_absolute():
-            return (BACKEND_DIR / path).resolve()
-        return path.resolve()
+            resolved = (BACKEND_DIR / path).resolve()
+        else:
+            resolved = path.resolve()
+        resolved.mkdir(parents=True, exist_ok=True)
+        return resolved
 
     def get_resolved_database_url(self) -> str:
         """
         Normalizes SQLite URLs with relative paths to absolute paths
-        to avoid issues across different working directories on Windows.
+        and ensures the target database directory exists.
         """
         url = self.DATABASE_URL
-        if url.startswith("sqlite:///."):
-            rel_path = url[len("sqlite:///"):]
-            abs_path = (BACKEND_DIR / rel_path).resolve().as_posix()
-            return f"sqlite:///{abs_path}"
+        if url.startswith("sqlite+aiosqlite:///"):
+            url = url.replace("sqlite+aiosqlite:///", "sqlite:///")
+
+        if url.startswith("sqlite:///"):
+            raw_path = url[len("sqlite:///"):]
+            # If in-memory database, return as is
+            if raw_path == ":memory:":
+                return url
+
+            path_obj = Path(raw_path)
+            if not path_obj.is_absolute():
+                abs_path = (BACKEND_DIR / path_obj).resolve()
+            else:
+                abs_path = path_obj.resolve()
+
+            # Ensure parent data directory exists
+            abs_path.parent.mkdir(parents=True, exist_ok=True)
+            return f"sqlite:///{abs_path.as_posix()}"
+
         return url
 
 

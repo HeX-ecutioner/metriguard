@@ -1,4 +1,3 @@
-import json
 import logging
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from app.models.schemas import InspectionResponse
@@ -6,11 +5,12 @@ from app.services.ai_extractor import extract_information
 from app.services.rule_engine import evaluate_compliance
 from app.services.storage import get_storage_service
 from app.db.database import get_db
-from app.db.models import InspectionRecord
+from app.db.crud import create_inspection_record
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
 
 @router.post("/inspect", response_model=InspectionResponse)
 async def inspect_package(
@@ -19,11 +19,11 @@ async def inspect_package(
 ):
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File provided is not an image.")
-    
+
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Empty image file provided.")
-    
+
     # Step 0: Persist image using storage abstraction
     image_storage_key = None
     try:
@@ -46,19 +46,18 @@ async def inspect_package(
         logger.error(f"Error during compliance evaluation: {e}")
         raise HTTPException(status_code=500, detail=f"Error during compliance evaluation: {str(e)}")
 
-    # Step 3: Store inspection record to DB
+    # Step 3: Persist inspection record via decoupled CRUD layer
     if db_session is not None:
         try:
-            record = InspectionRecord(
+            create_inspection_record(
+                db=db_session,
                 status=inspection_result.status,
                 confidence_score=inspection_result.confidence_score,
-                extracted_texts_json=json.dumps(inspection_result.extracted_texts),
-                violations_json=json.dumps([v.model_dump() for v in inspection_result.violations]),
+                extracted_texts=inspection_result.extracted_texts,
+                violations=[v.model_dump() for v in inspection_result.violations],
                 image_path=image_storage_key,
             )
-            db_session.add(record)
-            db_session.commit()
         except Exception as db_err:
-            logger.warning(f"Could not persist inspection record to DB: {db_err}")
+            logger.warning(f"Could not persist inspection record via CRUD layer: {db_err}")
 
     return inspection_result

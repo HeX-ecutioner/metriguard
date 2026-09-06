@@ -8,15 +8,17 @@ backend_dir = Path(__file__).resolve().parent.parent
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
-from app.db.database import Base, DATABASE_URL
+from app.core.config import settings
+from app.db.database import Base
 import app.db.models
 
 config = context.config
 target_metadata = getattr(Base, "metadata", None)
 
-def get_url():
-    url = os.getenv("DATABASE_URL", DATABASE_URL)
-    return url.replace("sqlite+aiosqlite:", "sqlite:")
+
+def get_url() -> str:
+    return settings.get_resolved_database_url()
+
 
 def run_migrations_offline() -> None:
     context.configure(
@@ -27,6 +29,7 @@ def run_migrations_offline() -> None:
     )
     with context.begin_transaction():
         context.run_migrations()
+
 
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
@@ -46,6 +49,7 @@ def run_migrations_online() -> None:
         )
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()
