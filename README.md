@@ -4,7 +4,6 @@ AI-Assisted Legal Metrology Compliance Inspection Platform for Packaged Commodit
 
 MetriGuard automates the verification of mandatory declarations under the **Legal Metrology (Packaged Commodities) Rules, 2011**. It combines local OCR text extraction, deterministic declaration parsing across 13 declaration types, and a reproducible regulatory rule engine to detect compliance violations in real time.
 
----
 
 ## 1. Prerequisites
 
@@ -15,36 +14,33 @@ Before setting up MetriGuard on Windows, ensure the following software is instal
   - *Ensure "Add python.exe to PATH" is checked during installation.*
 - **Node.js & npm**: Node.js `v18+` or `v20+` LTS ([nodejs.org](https://nodejs.org/))
 - **PowerShell**: PowerShell 5.1+ (built into Windows) or PowerShell 7+
-- **Docker Requirement**: **None**. MetriGuard runs natively on Windows without Docker, Docker Desktop, or WSL.
-
----
 
 ## 2. Backend Setup
 
 1. Open PowerShell and navigate to the project `backend` directory:
-   ```powershell
+   ```ps
    cd backend
    ```
 
 2. Create a dedicated Python virtual environment:
-   ```powershell
+   ```ps
    python -m venv .venv
    ```
 
 3. Activate the virtual environment:
-   ```powershell
+   ```ps
    .\.venv\Scripts\Activate.ps1
    ```
    *(If script execution is blocked, run: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`)*
 
 4. Install backend dependencies:
-   ```powershell
+   ```ps
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
 
 5. Verify environment variables in `backend/.env`:
-   ```env
+   ```sh
    APP_ENV=development
    DATABASE_URL=sqlite:///./data/metriguard.db
    STORAGE_PATH=./storage
@@ -54,24 +50,20 @@ Before setting up MetriGuard on Windows, ensure the following software is instal
    PORT=8000
    ```
 
----
-
 ## 3. Frontend Setup
 
 1. Open PowerShell and navigate to the `frontend` directory:
-   ```powershell
+   ```ps
    cd frontend
    ```
 
 2. Install npm dependencies:
-   ```powershell
+   ```ps
    npm install
    ```
 
 3. Verify environment configuration:
    The frontend defaults to connecting to the local backend at `http://127.0.0.1:8000`. If you wish to override this, configure `VITE_API_URL` in `frontend/.env`.
-
----
 
 ## 4. Database Setup
 
@@ -94,8 +86,6 @@ MetriGuard uses a persistent SQLite database stored locally under `backend/data/
    ```
    Expected output: `002_inspection_workflow_models (head)`
 
----
-
 ## 5. Running the Application
 
 ### Option A: One-Click Launcher (Recommended)
@@ -115,31 +105,29 @@ This script automatically verifies dependencies, initializes directories, applie
 ### Option B: Manual Execution (Two Terminals)
 
 **Terminal 1 (Backend):**
-```powershell
+```ps
 cd backend
 .\.venv\Scripts\Activate.ps1
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 **Terminal 2 (Frontend):**
-```powershell
+```ps
 cd frontend
 npm run dev
 ```
-
----
 
 ## 6. Running Tests
 
 ### Automated Environment Verification
 Run the diagnostic setup validation script from the root workspace:
-```powershell
+```ps
 powershell -ExecutionPolicy Bypass -File .\verify_setup.ps1
 ```
 
 ### Backend Tests (`pytest`)
 Runs all 152 unit, integration, regulatory rule engine, orchestrator, and failure-case tests:
-```powershell
+```ps
 cd backend
 .\.venv\Scripts\pytest tests -q
 ```
@@ -152,7 +140,7 @@ backend\.venv\Scripts\python backend\smoke_test.py
 
 ### Frontend Tests, Linting & Build
 
-```powershell
+```ps
 cd frontend
 
 # 1. Run Vitest component tests (Dashboard, Upload, Detail)
@@ -165,8 +153,6 @@ npm run lint
 npm run build
 ```
 
----
-
 ## 7. Troubleshooting
 
 ### 1. PaddleOCR oneDNN Error on Windows x64
@@ -177,14 +163,14 @@ npm run build
 ### 2. PowerShell Script Execution Policy Blocked
 - **Symptom**: `File ...\Activate.ps1 cannot be loaded because running scripts is disabled on this system.`
 - **Fix**: In your PowerShell session, run:
-  ```powershell
+  ```ps
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
   ```
 
 ### 3. Alembic "Path doesn't exist: alembic"
 - **Symptom**: Running `alembic current` from root fails to locate the scripts folder.
 - **Fix**: Always run Alembic commands directly from the `backend/` directory:
-  ```powershell
+  ```ps
   cd backend
   .\.venv\Scripts\alembic upgrade head
   ```
@@ -192,11 +178,9 @@ npm run build
 ### 4. Windows Console Unicode Encoding (`\u2713`)
 - **Symptom**: `UnicodeEncodeError: 'charmap' codec can't encode character '\u2713'`.
 - **Fix**: Windows console uses code page 1252 by default. Set UTF-8 encoding before running CLI tools:
-  ```powershell
+  ```ps
   $env:PYTHONIOENCODING="utf-8"
   ```
-
----
 
 ## 8. Resetting Local Development Data
 
@@ -204,17 +188,17 @@ If you need to reset all inspections, uploaded images, and database records back
 
 1. Stop any running backend and frontend processes (`Ctrl + C`).
 2. Delete the SQLite database file and uploads directory:
-   ```powershell
+   ```ps
    Remove-Item -Force "backend\data\metriguard.db" -ErrorAction SilentlyContinue
    Remove-Item -Recurse -Force "backend\storage\uploads\*" -ErrorAction SilentlyContinue
    ```
 3. Reapply database migrations from the `backend` directory:
-   ```powershell
+   ```ps
    cd backend
    .\.venv\Scripts\alembic upgrade head
    ```
 4. Restart the servers:
-   ```powershell
+   ```ps
    cd ..
    .\start.ps1
    ```

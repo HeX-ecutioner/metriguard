@@ -1,8 +1,6 @@
-# Native Windows Development Setup Guide (Docker-Free)
+# Native Windows Development Setup Guide
 
-MetriGuard is built to run 100% natively on Windows using native Python, Node.js, and local file-based storage. Docker, Docker Desktop, and container orchestration tools are **not required** and are not used anywhere in the core workflow.
-
----
+MetriGuard is built to run 100% natively on Windows using native Python, Node.js, and local file-based storage.
 
 ## 1. System Prerequisites
 
@@ -18,8 +16,6 @@ Ensure the following runtimes are installed directly on Windows:
 > [!NOTE]
 > Ensure **Python** and **Node.js** are added to your Windows `PATH` during installation.
 
----
-
 ## 2. Architecture Overview (Native Windows)
 
 - **Frontend**: React 19 + TypeScript + Vite running locally on `http://localhost:5173`.
@@ -29,13 +25,11 @@ Ensure the following runtimes are installed directly on Windows:
 - **File Storage**: Local filesystem abstraction managing `backend/storage/`, `backend/storage/uploads/`, and `backend/storage/reports/`.
 - **AI Extraction**: Graceful development mock extractor by default, with optional local OCR support (PaddleOCR / Tesseract) when installed.
 
----
-
 ## 3. Quick Start (Automatic Setup)
 
 From the project root directory, run the PowerShell startup script:
 
-```powershell
+```cmd
 .\start.ps1
 ```
 
@@ -54,8 +48,6 @@ This will:
 6. Launch the Backend API on port 8000.
 7. Launch the Frontend UI on port 5173.
 
----
-
 ## 4. Manual Step-by-Step Setup (Separate Terminals)
 
 For everyday development, you can run the frontend and backend in separate terminal windows.
@@ -64,7 +56,7 @@ For everyday development, you can run the frontend and backend in separate termi
 
 Run the following commands in PowerShell from the repository root:
 
-```powershell
+```ps
 cd backend
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -80,22 +72,20 @@ If PowerShell displays an error such as:
 > *cannot be loaded because running scripts is disabled on this system*
 
 Resolve it for your **current user account only** (without altering system-wide policy):
-```powershell
+```ps
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
 Alternatively, bypass the policy solely for your current PowerShell window:
-```powershell
+```ps
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
-
----
 
 ### Terminal 2: Frontend Setup & Execution
 
 Open a second PowerShell window and navigate to the `frontend` directory:
 
-```powershell
+```ps
 cd frontend
 npm install
 npm run dev
@@ -107,8 +97,6 @@ npm run dev
 - **Detailed Diagnostics**: `http://127.0.0.1:8000/health/detail`
 - **Interactive Swagger Docs**: `http://127.0.0.1:8000/docs`
 
----
-
 ## 5. Environment Configuration
 
 ### Backend (`backend/.env`)
@@ -116,7 +104,7 @@ npm run dev
 Configuration is managed via `backend/app/core/config.py` using `pydantic-settings`.
 Copy `backend/.env.example` to `backend/.env`:
 
-```env
+```ps
 APP_ENV=development
 DATABASE_URL=sqlite:///./data/metriguard.db
 STORAGE_PATH=./storage
@@ -133,8 +121,6 @@ USE_MOCK_EXTRACTOR=false
 
 No secrets or passwords are required for local development.
 
----
-
 ## 6. Directory Structure Created Automatically
 
 The backend automatically creates the following local directories on startup:
@@ -146,13 +132,11 @@ The backend automatically creates the following local directories on startup:
 
 All database files and uploads are excluded from git tracking.
 
----
-
 ## 7. Backend Verification Script
 
 To verify that your backend environment, dependencies, database, storage directories, and health endpoint are properly configured:
 
-```powershell
+```bash
 cd backend
 .\.venv\Scripts\Activate.ps1
 python verify_backend.py
@@ -165,42 +149,38 @@ This verification script checks:
 4. **Writable Storage**: Confirms `data/`, `storage/`, `storage/uploads/`, and `storage/reports/` exist and are writable.
 5. **Health Endpoint**: Verifies `GET /health` returns HTTP 200 with `{"status": "ok"}`.
 
----
-
 ## 8. Database Migrations (Alembic)
 
 All schema changes are tracked with Alembic inside `backend/`.
 
 - **Apply all migrations**:
-  ```powershell
+  ```bash
   cd backend
   .\.venv\Scripts\Activate.ps1
   alembic upgrade head
   ```
 
 - **Create a new migration after editing SQLAlchemy models**:
-  ```powershell
+  ```ps
   alembic revision --autogenerate -m "describe_changes_here"
   ```
 
 - **View migration history**:
-  ```powershell
+  ```ps
   alembic history
   ```
-
----
 
 ## 9. Running Automated Tests
 
 ### Backend Unit & Integration Tests:
-```powershell
+```bash
 cd backend
 .\.venv\Scripts\Activate.ps1
 pytest tests
 ```
 
 ### Frontend Tests, Linting & Build:
-```powershell
+```bash
 cd frontend
 npm run lint
 npm run build

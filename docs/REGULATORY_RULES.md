@@ -3,16 +3,12 @@
 This document specifies the authoritative regulatory requirements codified in MetriGuard's deterministic rule engine.
 Every rule implemented in the system maps directly to the official statutory text of the **Legal Metrology (Packaged Commodities) Rules, 2011** (as amended up to 2022) issued by the Department of Consumer Affairs, Ministry of Consumer Affairs, Food and Public Distribution, Government of India.
 
----
-
 ## Architectural Principles
 
 1. **Deterministic & Reproducible**: Rules evaluate structured facts extracted from OCR. Compliance determinations are deterministic, reproducible, and do not use LLMs as decision-makers.
 2. **Conservative & Traceable**: Absence of evidence is not compliance. Ambiguous declarations, missing fields, or low OCR confidences trigger `REVIEW` rather than assuming compliance.
 3. **Exemptions Respected**: Statutory exemptions (such as Rule 26 exemptions for packages $\le$ 10g/ml, wholesale packages, or industrial/institutional consumers) correctly yield `NOT_APPLICABLE`.
 4. **Prototype Labeling**: Rules covering general packaged commodities are marked as prototypes (`is_prototype = True`) to indicate that specialized sub-commodity schedules (such as Schedule II specific commodities) are pending full codification.
-
----
 
 ## Rule Structure Schema
 
@@ -29,8 +25,6 @@ Each codified rule contains the following versioned metadata:
 - **`is_prototype`**: Indicates prototype status.
 - **`source_reference`**: Official statutory citation.
 
----
-
 ## Evaluation Outcomes
 
 The rule engine yields one of four outcomes for each rule:
@@ -38,8 +32,6 @@ The rule engine yields one of four outcomes for each rule:
 - **`FAIL`**: The declaration is absent on an applicable package, or violates statutory formatting (e.g. illegal non-metric units, negative price, future date).
 - **`REVIEW`**: The declaration is ambiguous (conflicting values on same package), has low OCR confidence, or requires human inspector verification.
 - **`NOT_APPLICABLE`**: The package is exempt under statutory provisions (e.g. Rule 26 exemptions, wholesale supply, or quantity below threshold).
-
----
 
 ## Codified Prototype Rules (Version 1.0)
 
@@ -61,8 +53,6 @@ The rule engine yields one of four outcomes for each rule:
   - `REVIEW`: Multiple conflicting prices detected (`AMBIGUOUS`), OCR confidence < threshold, or unreadable digits.
   - `NOT_APPLICABLE`: Package is wholesale, industrial, institutional, or weight-exempt.
 
----
-
 ### 2. Net Quantity & Metric Units Declaration
 - **Rule ID**: `LMR-2011-R06-1-C`
 - **Version**: `1.0.0`
@@ -82,8 +72,6 @@ The rule engine yields one of four outcomes for each rule:
   - `REVIEW`: Ambiguous (conflicting quantities detected), or low OCR confidence.
   - `NOT_APPLICABLE`: Package is net weight $\le$ 10g/ml or wholesale exempt.
 
----
-
 ### 3. Name and Address of Manufacturer / Packer / Importer
 - **Rule ID**: `LMR-2011-R06-1-A`
 - **Version**: `1.0.0`
@@ -99,8 +87,6 @@ The rule engine yields one of four outcomes for each rule:
   - `REVIEW`: Ambiguous entity details or low OCR confidence.
   - `NOT_APPLICABLE`: Exempt packages under Rule 26.
 
----
-
 ### 4. Month and Year of Manufacture or Pre-packing
 - **Rule ID**: `LMR-2011-R06-1-D`
 - **Version**: `1.0.0`
@@ -114,8 +100,6 @@ The rule engine yields one of four outcomes for each rule:
   - `REVIEW`: Ambiguous conflicting dates or low OCR confidence.
   - `NOT_APPLICABLE`: Exempt commodity category.
 
----
-
 ### 5. Consumer Care Grievance Redressal Details
 - **Rule ID**: `LMR-2011-R06-1-G`
 - **Version**: `1.0.0`
@@ -128,8 +112,6 @@ The rule engine yields one of four outcomes for each rule:
   - `FAIL`: Missing consumer care details.
   - `REVIEW`: Ambiguous contact details or low OCR confidence.
   - `NOT_APPLICABLE`: Exempt wholesale or institutional packages.
-
----
 
 ### 6. Unit Sale Price (USP)
 - **Rule ID**: `LMR-2011-R06-11-USP`
@@ -147,8 +129,6 @@ The rule engine yields one of four outcomes for each rule:
   - `FAIL`: Applicable package (> 100g/ml) completely lacks Unit Sale Price declaration.
   - `NOT_APPLICABLE`: Package net quantity is $\le$ 100 g or $\le$ 100 ml.
   - `REVIEW`: Net quantity is unknown/missing so applicability cannot be determined, or USP is ambiguous.
-
----
 
 ## Limitations & Future Roadmap
 

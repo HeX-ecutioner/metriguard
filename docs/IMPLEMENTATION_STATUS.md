@@ -1,16 +1,14 @@
 # MetriGuard Implementation Status & Verification Report
 
-**Platform**: Native Windows 11 x64 (Docker-Free)  
+**Platform**: Native Windows 11 x64
 **Execution Environment**: Python 3.12.10 (`backend/.venv`), Node.js v25.2.1, SQLite 3  
 **Report Date**: September 2026  
 **Verification Pass**: Complete Native Windows Validation
 
----
-
 ## 1. Completed Features
 
 ### Backend Architecture
-- [x] **Native Windows Runtime**: 100% Docker-free local execution using Python virtual environment and native background process launchers.
+- [x] **Native Windows Runtime**: Local execution using Python virtual environment and native background process launchers.
 - [x] **FastAPI Application**: High-performance asynchronous REST API with structured Pydantic v2 schemas and CORS middleware.
 - [x] **SQLite Database & Alembic Migrations**: Persistent SQLite database (`backend/data/metriguard.db`) managed via versioned Alembic migrations (`001_initial_schema`, `002_inspection_workflow_models`).
 - [x] **Local Storage Service**: File system storage abstraction (`backend/storage/uploads`, `backend/storage/reports`) with automatic directory recovery and byte streaming.
@@ -62,14 +60,10 @@
   - Original image viewer opening `/api/v1/inspections/{id}/images/{img_id}/file` in a new tab.
 - [x] **Drag & Drop Package Image Upload**: Real-time upload progress tracking and session creation.
 
----
-
 ## 2. Partially Completed Features
 
 - **Multi-Image Package Stitching**: Multiple images can be uploaded to a single inspection session, but declaration extraction currently analyzes images individually rather than cross-stitching a 360-degree composite cylindrical package wrap.
 - **Physical Size & Font Height Verification**: The rule engine verifies declaration existence, unit consistency, and price formats; physical font millimeter verification requires millimeter-to-pixel calibration markers on uploaded labels.
-
----
 
 ## 3. Known Bugs & Upstream Limitations
 
@@ -79,12 +73,10 @@
 - **Windows Console Code Page (cp1252)**:
   - CLI scripts attempting to print unicode checkmarks (`\u2713`) fail on Windows cmd/powershell unless `PYTHONIOENCODING=utf-8` is set. All CLI output uses standard ASCII tokens (`[OK]`, `[PASS]`, `[FAIL]`).
 
----
-
 ## 4. Commands That Were Verified
 
 ### Verification Passes
-```powershell
+```bash
 # 1. Native Environment Verification Script
 powershell -ExecutionPolicy Bypass -File .\verify_setup.ps1
 # Result: [PASS] across all 8 environment checks
@@ -114,8 +106,6 @@ cd backend && .venv\Scripts\alembic current
 # Result: 002_inspection_workflow_models (head)
 ```
 
----
-
 ## 5. Commands That Failed (and Resolutions)
 
 1. `alembic -c backend\alembic.ini current` (executed from workspace root):
@@ -128,34 +118,30 @@ cd backend && .venv\Scripts\alembic current
    - *Failure*: `UnicodeEncodeError: 'charmap' codec can't encode character '\u2713'`.
    - *Resolution*: Replaced unicode checkmarks with standard ASCII status tags `[OK]`.
 
----
-
 ## 6. Manual Setup Steps
 
 1. **Python Virtual Environment**:
-   ```powershell
+   ```ps
    cd backend
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1
    pip install -r requirements.txt
    ```
 2. **Database Migrations**:
-   ```powershell
+   ```ps
    cd backend
    .\.venv\Scripts\alembic upgrade head
    ```
 3. **Frontend Dependencies**:
-   ```powershell
+   ```ps
    cd frontend
    npm install
    ```
 4. **Launch Development Servers**:
-   ```powershell
+   ```ps
    # From root:
    .\start.ps1
    ```
-
----
 
 ## 7. Remaining Risks
 
@@ -165,8 +151,6 @@ cd backend && .venv\Scripts\alembic current
    - Packaged commodities with heavy cylindrical reflections or metallic packaging can degrade OCR line extraction, appropriately triggering `MANUAL_REVIEW`.
 3. **SQLite Concurrency**:
    - SQLite is suitable for single-node inspection stations and MVP demonstration. For enterprise multi-user concurrent write throughput, the database layer should migrate to PostgreSQL.
-
----
 
 ## 8. Exact MVP Limitations
 
