@@ -4,7 +4,7 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.db.database import Base
-from app.db.models import InspectionRecord
+from app.db.models import Inspection, PackageImage, Declaration, Violation, InspectionResult
 from app.db.crud import create_inspection_record, get_inspection_record, list_inspection_records
 from app.core.config import BACKEND_DIR, settings
 
@@ -15,7 +15,7 @@ def test_isolated_sqlite_database(tmp_path):
     1. Creates a temporary SQLite database
     2. Creates all required tables
     3. Inserts a record using CRUD layer
-    4. Retrieves and verifies the record
+    4. Retrieves and verifies the record and relations
     5. Confirms the dev database is untouched
     6. Properly disposes engine and isolates the temp database
     """
@@ -57,9 +57,12 @@ def test_isolated_sqlite_database(tmp_path):
             assert retrieved is not None
             assert retrieved.id == record_id
             assert retrieved.status == "COMPLIANT"
-            assert retrieved.confidence_score == 0.97
-            assert "MRP Rs. 150" in retrieved.extracted_texts_json
-            assert retrieved.image_path == "test_package_001.jpg"
+            assert retrieved.overall_confidence == 0.97
+            assert len(retrieved.declarations) == 2
+            assert any("MRP Rs. 150" in d.extracted_value for d in retrieved.declarations)
+            assert len(retrieved.images) == 1
+            assert retrieved.images[0].file_path == "test_package_001.jpg"
+            assert retrieved.result is not None
 
             # Check list function
             records = list_inspection_records(db=session, skip=0, limit=10)
@@ -72,8 +75,8 @@ def test_isolated_sqlite_database(tmp_path):
             from app.db.database import SessionLocal
             with SessionLocal() as dev_session:
                 # The record inserted in temp_db should NOT exist in dev_db with this test payload
-                dev_record = dev_session.query(InspectionRecord).filter(
-                    InspectionRecord.image_path == "test_package_001.jpg"
+                dev_record = dev_session.query(PackageImage).filter(
+                    PackageImage.file_path == "test_package_001.jpg"
                 ).first()
                 assert dev_record is None, "Development database was modified by test!"
 
