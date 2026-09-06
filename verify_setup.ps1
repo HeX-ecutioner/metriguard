@@ -51,8 +51,12 @@ Report-Check "Python Virtual Environment (backend/.venv)" $venvExists "Path: $ve
 # 4. Check Backend Directory Layout
 $dataPath = Join-Path $rootDir "backend\data"
 $storagePath = Join-Path $rootDir "backend\storage"
+$uploadsPath = Join-Path $rootDir "backend\storage\uploads"
+$reportsPath = Join-Path $rootDir "backend\storage\reports"
 Report-Check "Local Data Directory (backend/data)" (Test-Path $dataPath) "$dataPath"
 Report-Check "Local Storage Directory (backend/storage)" (Test-Path $storagePath) "$storagePath"
+Report-Check "Storage Uploads Directory (backend/storage/uploads)" (Test-Path $uploadsPath) "$uploadsPath"
+Report-Check "Storage Reports Directory (backend/storage/reports)" (Test-Path $reportsPath) "$reportsPath"
 
 # 5. Check Backend Migrations & Database Initialization
 if ($venvExists) {

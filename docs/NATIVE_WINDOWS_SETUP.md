@@ -10,7 +10,7 @@ Ensure the following runtimes are installed directly on Windows:
 
 | Requirement | Minimum Version | Installation Verification |
 | :--- | :--- | :--- |
-| **Python** | 3.11+ (64-bit) | `python --version` |
+| **Python** | 3.11+ (64-bit) | `py --version` or `python --version` |
 | **Node.js** | v18+ | `node --version` |
 | **npm** | v9+ | `npm --version` |
 | **PowerShell** | 5.1+ or 7+ | `$PSVersionTable.PSVersion` |
@@ -23,11 +23,11 @@ Ensure the following runtimes are installed directly on Windows:
 ## 2. Architecture Overview (Native Windows)
 
 - **Frontend**: React 19 + TypeScript + Vite running locally on `http://localhost:5173`.
-- **Backend**: FastAPI + Uvicorn running in a dedicated Python virtual environment (`backend/.venv`) on `http://localhost:8000`.
-- **Database**: SQLite using `aiosqlite` and SQLAlchemy 2.0 with the database file stored locally under `backend/data/metriguard.db`.
-- **Database Migrations**: Tracked versioned migrations via Alembic configured for SQLite (with batch mode enabled).
-- **File Storage**: Local filesystem storage abstraction under `backend/storage/` (pluggable for future S3/MinIO drivers).
-- **AI / Computer Vision**: Local OpenCV (`opencv-python-headless`) and PaddleOCR/Tesseract with fallback mock data when native binary OCR engines are not present.
+- **Backend**: FastAPI + Pydantic Settings + Uvicorn running in a dedicated Python virtual environment (`backend/.venv`) on `http://localhost:8000`.
+- **Database**: SQLite using standard SQLAlchemy 2.0 with Python's built-in `sqlite3` driver. The database file is stored locally at `backend/data/metriguard.db`.
+- **Database Migrations**: Versioned migrations via Alembic.
+- **File Storage**: Local filesystem abstraction managing `backend/storage/`, `backend/storage/uploads/`, and `backend/storage/reports/`.
+- **AI Extraction**: Graceful development mock extractor by default, with optional local OCR support (PaddleOCR / Tesseract) when installed.
 
 ---
 
@@ -48,7 +48,7 @@ start.bat
 This will:
 1. Verify Python and Node.js are available.
 2. Initialize `backend/.venv` if not already present.
-3. Install dependencies from `requirements.txt` into the virtual environment.
+3. Install skeleton dependencies from `backend/requirements.txt` into the virtual environment.
 4. Run Alembic migrations to initialize `backend/data/metriguard.db`.
 5. Install frontend packages in `frontend/node_modules` via `npm install`.
 6. Launch the Backend API on port 8000.
@@ -58,108 +58,116 @@ This will:
 
 ## 4. Manual Step-by-Step Setup (Separate Terminals)
 
-For everyday development, run the frontend and backend in separate terminal windows.
+For everyday development, you can run the frontend and backend in separate terminal windows.
 
-### Terminal 1: Backend Setup & Execution
+### Terminal 1: Backend Setup & Execution (PowerShell)
 
-1. Open PowerShell and navigate to the `backend` directory:
-   ```powershell
-   cd backend
-   ```
+Run the following commands in PowerShell from the repository root:
 
-2. Create a Python virtual environment (first time only):
-   ```powershell
-   python -m venv .venv
-   ```
+```powershell
+cd backend
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn app.main:app --reload
+```
 
-3. Activate the virtual environment:
-   ```powershell
-   .\.venv\Scripts\Activate.ps1
-   ```
-   *(If PowerShell gives an execution policy error, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first).*
+#### Troubleshooting PowerShell Script Execution Policy:
 
-4. Install backend dependencies:
-   ```powershell
-   python -m pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
+If PowerShell displays an error such as:
+> *cannot be loaded because running scripts is disabled on this system*
 
-5. (Optional) Install local OCR libraries:
-   ```powershell
-   pip install -r requirements-ocr.txt
-   ```
-   *Note: If Tesseract or PaddleOCR is not installed, MetriGuard automatically uses the simulated mock extractor so you can continue development without blockers.*
+Resolve it for your **current user account only** (without altering system-wide policy):
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
 
-6. Apply database migrations:
-   ```powershell
-   alembic upgrade head
-   ```
-
-7. Start the FastAPI backend with auto-reload:
-   ```powershell
-   uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-   ```
-
-- **API Base URL**: `http://127.0.0.1:8000`
-- **Health Check**: `http://127.0.0.1:8000/health`
-- **Interactive Swagger Docs**: `http://127.0.0.1:8000/docs`
+Alternatively, bypass the policy solely for your current PowerShell window:
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
 
 ---
 
 ### Terminal 2: Frontend Setup & Execution
 
-1. Open a second PowerShell window and navigate to the `frontend` directory:
-   ```powershell
-   cd frontend
-   ```
+Open a second PowerShell window and navigate to the `frontend` directory:
 
-2. Install dependencies locally (first time only):
-   ```powershell
-   npm install
-   ```
-
-3. Start the Vite development server:
-   ```powershell
-   npm run dev
-   ```
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
 - **Frontend Application**: `http://localhost:5173`
-
-The frontend automatically proxies `/api` requests to `http://127.0.0.1:8000`.
+- **Backend API**: `http://127.0.0.1:8000`
+- **Health Check**: `http://127.0.0.1:8000/health` (Returns `{"status": "ok"}`)
+- **Detailed Diagnostics**: `http://127.0.0.1:8000/health/detail`
+- **Interactive Swagger Docs**: `http://127.0.0.1:8000/docs`
 
 ---
 
 ## 5. Environment Configuration
 
 ### Backend (`backend/.env`)
-Copy `backend/.env.example` to `backend/.env` (defaults are already configured for local execution):
+
+Configuration is managed via `backend/app/core/config.py` using `pydantic-settings`.
+Copy `backend/.env.example` to `backend/.env`:
 
 ```env
+APP_ENV=development
+DATABASE_URL=sqlite:///./data/metriguard.db
+STORAGE_PATH=./storage
+MAX_UPLOAD_SIZE_MB=10
+CORS_ORIGINS=http://localhost:5173
+
+# Server settings
 HOST=127.0.0.1
 PORT=8000
-DEBUG=True
 
-# Local SQLite database path
-DATABASE_URL=sqlite+aiosqlite:///./data/metriguard.db
-
-# Storage configuration
-STORAGE_TYPE=local
-STORAGE_DIR=./storage
-
-# AI Extractor Toggle (set to true to use mock data for instant testing)
+# AI Extractor Toggle (Set to true to use mock data for instant testing without OCR)
 USE_MOCK_EXTRACTOR=false
 ```
 
-### Frontend (`frontend/.env`)
-Copy `frontend/.env.example` to `frontend/.env`:
-
-```env
-VITE_API_URL=http://127.0.0.1:8000
-```
+No secrets or passwords are required for local development.
 
 ---
 
-## 6. Database Migrations (Alembic)
+## 6. Directory Structure Created Automatically
+
+The backend automatically creates the following local directories on startup:
+
+- `backend/data/` - Holds the SQLite database file (`metriguard.db`).
+- `backend/storage/` - Base folder for local file storage abstraction.
+- `backend/storage/uploads/` - Incoming commodity package images uploaded for inspection.
+- `backend/storage/reports/` - Generated PDF/JSON compliance audit reports.
+
+All database files and uploads are excluded from git tracking.
+
+---
+
+## 7. Backend Verification Script
+
+To verify that your backend environment, dependencies, database, storage directories, and health endpoint are properly configured:
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+python verify_backend.py
+```
+
+This verification script checks:
+1. **Python Version**: Confirms Python $\ge 3.11$.
+2. **Required Packages**: Confirms all 9 skeleton dependencies (`fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic`, `pydantic-settings`, `python-multipart`, `pytest`, `httpx`).
+3. **Database Connection**: Confirms live SQLite connectivity via SQLAlchemy.
+4. **Writable Storage**: Confirms `data/`, `storage/`, `storage/uploads/`, and `storage/reports/` exist and are writable.
+5. **Health Endpoint**: Verifies `GET /health` returns HTTP 200 with `{"status": "ok"}`.
+
+---
+
+## 8. Database Migrations (Alembic)
 
 All schema changes are tracked with Alembic inside `backend/`.
 
@@ -180,50 +188,21 @@ All schema changes are tracked with Alembic inside `backend/`.
   alembic history
   ```
 
-SQLite files are saved under `backend/data/metriguard.db` and are excluded from git.
-
 ---
 
-## 7. Storage Abstraction
+## 9. Running Automated Tests
 
-Uploaded inspection images are handled via the `StorageService` interface defined in `backend/app/services/storage.py`.
-
-- In native Windows development, files are saved locally to `backend/storage/<uuid>_<filename>`.
-- The storage directory is created automatically on first run and is excluded from git.
-- If S3 or MinIO cloud storage is needed in the future, a new subclass of `StorageService` can be implemented without changing the core inspection logic.
-
----
-
-## 8. Running Automated Tests
-
-### Backend Tests
+### Backend Unit & Integration Tests:
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
 pytest tests
 ```
 
-### Frontend Tests & Type Checking
+### Frontend Tests, Linting & Build:
 ```powershell
 cd frontend
 npm run lint
 npm run build
 npm test
 ```
-
----
-
-## 9. Automated Setup Verification
-
-To verify that your entire environment is configured correctly:
-
-```powershell
-.\verify_setup.ps1
-```
-
-This script checks:
-- Python and Node.js installation
-- `.venv` creation and package installation
-- SQLite database initialization and Alembic migrations
-- Local storage directory readiness
-- Backend and frontend automated tests
