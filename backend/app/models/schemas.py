@@ -60,6 +60,7 @@ class DeclarationDetailResponse(BaseModel):
     declaration_type: str
     extracted_value: str
     confidence: Optional[float] = None
+    source_image_id: Optional[int] = None
     bounding_box: Optional[str] = None
 
 
