@@ -1,0 +1,28 @@
+[project]
+name = "metriguard-backend"
+version = "1.0.0"
+description = "Backend API for packaged commodity compliance inspection"
+requires-python = ">=3.11"
+
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlalchemy",
+    "alembic",
+    "pydantic",
+    "python-multipart",
+    "opencv-python",
+    "paddleocr",
+    "pillow"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+    "ruff",
+    "mypy"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

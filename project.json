@@ -1,0 +1,37 @@
+{
+    "name": "metriguard",
+    "version": "1.0.0",
+    "status": "mvp",
+    "team": "AlgoForge",
+    "problemStatement": "SIH26034",
+    "title": "Software System to check compliance of Packaged Commodities under Legal Metrology Rules",
+    "description": "AI-assisted inspection platform that extracts package declarations and evaluates them using a versioned deterministic compliance engine.",
+    "repository": {
+        "type": "git",
+        "branch": "main"
+    },
+    "components": {
+        "frontend": "React + TypeScript + Vite",
+        "backend": "FastAPI + Python",
+        "database": "SQLite",
+        "ocr": "PaddleOCR",
+        "computerVision": "OpenCV",
+        "testing": "Pytest + Vitest + Playwright"
+    },
+    "capabilities": [
+        "Package image upload",
+        "OCR extraction",
+        "Mandatory declaration extraction",
+        "Versioned rule evaluation",
+        "Evidence-backed violations",
+        "Manual review status",
+        "Inspection history",
+        "Report generation"
+    ],
+    "complianceStatuses": [
+        "COMPLIANT",
+        "NON_COMPLIANT",
+        "MANUAL_REVIEW"
+    ],
+    "regulatorySource": "Legal Metrology (Packaged Commodities) Rules, 2011 and applicable amendments"
+}
