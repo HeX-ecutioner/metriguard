@@ -23,6 +23,7 @@ export interface PackageImage {
   confidence_score?: number | null;
   extracted_texts?: string[] | null;
   violations?: RuleViolation[] | null;
+  image_url?: string | null;
 }
 
 export interface DeclarationItem {
@@ -41,6 +42,10 @@ export interface ViolationItem {
   explanation: string;
   severity: string;
   confidence?: number | null;
+  evidence_image_id?: number | null;
+  evidence_bounding_box?: string | null;
+  measured_value?: string | null;
+  expected_value?: string | null;
 }
 
 export interface InspectionResultItem {
@@ -193,6 +198,13 @@ class ApiClient {
     }
 
     return response.json();
+  }
+
+  /**
+   * Returns direct URL to download/view the original uploaded package image.
+   */
+  getImageFileUrl(inspectionId: number, imageId: number): string {
+    return this.getUrl(`/api/v1/inspections/${inspectionId}/images/${imageId}/file`);
   }
 }
 

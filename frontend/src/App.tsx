@@ -1,57 +1,18 @@
 import { useState } from 'react';
 import ImageUpload from './components/ImageUpload';
 import ResultsView from './components/ResultsView';
+import { apiClient } from './api/client';
 import type { PackageImage, Inspection } from './api/client';
-
-export interface Violation {
-  rule_id: string;
-  explanation: string;
-  confidence: number;
-}
-
-export interface InspectionResult {
-  status: 'COMPLIANT' | 'NON_COMPLIANT' | 'MANUAL_REVIEW';
-  violations: Violation[];
-  extracted_texts: string[];
-  confidence_score: number;
-}
 
 function App() {
   const [activeInspection, setActiveInspection] = useState<Inspection | null>(null);
-  const [inspectionResult, setInspectionResult] = useState<InspectionResult | null>(null);
 
-  const handleUploadSuccess = (image: PackageImage, inspection: Inspection) => {
+  const handleUploadSuccess = (_image: PackageImage, inspection: Inspection) => {
     setActiveInspection(inspection);
-
-    // Populate inspection report from image analysis or inspection declarations
-    if (image.status && image.confidence_score !== undefined && image.confidence_score !== null) {
-      setInspectionResult({
-        status: (image.status as 'COMPLIANT' | 'NON_COMPLIANT' | 'MANUAL_REVIEW') || 'MANUAL_REVIEW',
-        confidence_score: image.confidence_score,
-        extracted_texts: image.extracted_texts || [],
-        violations: (image.violations || []).map((v) => ({
-          rule_id: v.rule_id,
-          explanation: v.explanation,
-          confidence: v.confidence,
-        })),
-      });
-    } else if (inspection.declarations && inspection.declarations.length > 0) {
-      setInspectionResult({
-        status: (inspection.status as 'COMPLIANT' | 'NON_COMPLIANT' | 'MANUAL_REVIEW') || 'MANUAL_REVIEW',
-        confidence_score: inspection.overall_confidence || 0,
-        extracted_texts: inspection.declarations.map((d) => d.extracted_value),
-        violations: (inspection.violations || []).map((v) => ({
-          rule_id: v.rule_id,
-          explanation: v.explanation,
-          confidence: v.confidence || 1.0,
-        })),
-      });
-    }
   };
 
   const handleInspectionCreated = (inspection: Inspection) => {
     setActiveInspection(inspection);
-    setInspectionResult(null);
   };
 
   return (
@@ -94,7 +55,7 @@ function App() {
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
                 Attached Images ({activeInspection.images.length}):
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
                 {activeInspection.images.map((img) => (
                   <div
                     key={img.id}
@@ -104,14 +65,35 @@ function App() {
                       borderRadius: '8px',
                       border: '1px solid var(--glass-border)',
                       fontSize: '0.8rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '0.4rem',
                     }}
                   >
-                    <p style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '0.25rem' }}>
-                      {img.original_filename}
-                    </p>
-                    <p style={{ color: 'var(--text-muted)' }}>{img.width} × {img.height} px</p>
-                    <p style={{ color: 'var(--text-muted)' }}>{(img.file_size / 1024).toFixed(1)} KB</p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>ID #{img.id}</p>
+                    <div>
+                      <p style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '0.25rem' }}>
+                        {img.original_filename}
+                      </p>
+                      <p style={{ color: 'var(--text-muted)' }}>{img.width} × {img.height} px</p>
+                      <p style={{ color: 'var(--text-muted)' }}>{(img.file_size / 1024).toFixed(1)} KB</p>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>ID #{img.id}</p>
+                    </div>
+                    <a
+                      href={apiClient.getImageFileUrl(activeInspection.id, img.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-block',
+                        marginTop: '0.25rem',
+                        fontSize: '0.75rem',
+                        color: 'var(--primary-color)',
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Open Image ↗
+                    </a>
                   </div>
                 ))}
               </div>
@@ -120,8 +102,8 @@ function App() {
         </section>
 
         <section className="results-column">
-          {inspectionResult ? (
-            <ResultsView result={inspectionResult} />
+          {activeInspection && (activeInspection.result || (activeInspection.images && activeInspection.images.length > 0)) ? (
+            <ResultsView inspection={activeInspection} />
           ) : (
             <div
               className="glass-card"
@@ -151,4 +133,3 @@ function App() {
 }
 
 export default App;
-
