@@ -1,15 +1,10 @@
-# MetriGuard - Native Windows PowerShell Launcher
-# 100% Docker-Free Local Startup Script
-
 $ErrorActionPreference = "Stop"
-$rootDir = $PSScriptRoot
+$rootDir = if (Test-Path (Join-Path $PSScriptRoot "backend")) { $PSScriptRoot } else { (Resolve-Path (Join-Path $PSScriptRoot "..")).Path }
 
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  MetriGuard - Native Windows Startup (Docker-Free)" -ForegroundColor Cyan
-Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "MetriGuard - Starting services..." -ForegroundColor Cyan
 Write-Host ""
 
-# Verify Python
+# Verify Python and npm
 try {
     $pyVer = & python --version 2>&1
     Write-Host "[MetriGuard] Found Python: $pyVer" -ForegroundColor Green
@@ -17,8 +12,6 @@ try {
     Write-Error "[ERROR] Python is not installed or not available on PATH."
     exit 1
 }
-
-# Verify npm
 try {
     $npmVer = & npm --version 2>&1
     Write-Host "[MetriGuard] Found npm: v$npmVer" -ForegroundColor Green
@@ -39,7 +32,7 @@ foreach ($port in $ports) {
     }
 }
 
-# Backend Setup
+# Backend setup
 $backendDir = Join-Path $rootDir "backend"
 $venvDir = Join-Path $backendDir ".venv"
 $venvPython = Join-Path $venvDir "Scripts\python.exe"
@@ -72,7 +65,7 @@ try {
     Pop-Location
 }
 
-# Frontend Setup
+# Frontend setup
 $frontendDir = Join-Path $rootDir "frontend"
 $nodeModules = Join-Path $frontendDir "node_modules"
 

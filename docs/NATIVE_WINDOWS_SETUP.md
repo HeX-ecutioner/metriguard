@@ -173,3 +173,18 @@ npm run lint
 npm run build
 npm test
 ```
+
+## 10. Workspace Cleanup & Resetting Local Data
+
+To safely purge disposable development artifacts (caches, test outputs, build outputs, local database, and uploaded inspection images):
+
+```ps
+# Preview disposable targets without deleting
+.\scripts\clean-dir.ps1 -WhatIf
+
+# Interactive cleanup with confirmation prompt
+.\scripts\clean-dir.ps1
+
+# Unattended non-interactive cleanup
+.\scripts\clean-dir.ps1 -Force
+```

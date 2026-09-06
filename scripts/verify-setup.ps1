@@ -1,12 +1,7 @@
-# MetriGuard - Native Windows Environment Verification Script
-# Validates the complete Docker-free setup
-
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  MetriGuard Native Windows Setup Verification" -ForegroundColor Cyan
-Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "MetriGuard Native Windows Setup Verification" -ForegroundColor Cyan
 Write-Host ""
 
-$rootDir = $PSScriptRoot
+$rootDir = if (Test-Path (Join-Path $PSScriptRoot "backend")) { $PSScriptRoot } else { (Resolve-Path (Join-Path $PSScriptRoot "..")).Path }
 $allPassed = $true
 
 function Report-Check {
@@ -25,7 +20,7 @@ function Report-Check {
     }
 }
 
-# 1. Check Python
+# 1. Check Python, Node & npm
 try {
     $py = & python --version 2>&1
     $pyOk = $py -match "Python 3\.(1[1-9]|[2-9]\d)"
@@ -33,8 +28,6 @@ try {
 } catch {
     Report-Check "System Python 3.11+" $false "Python is not found on PATH"
 }
-
-# 2. Check Node & npm
 try {
     $node = & node --version 2>&1
     $npm = & npm --version 2>&1
@@ -43,12 +36,12 @@ try {
     Report-Check "Node.js & npm" $false "Node.js / npm not found on PATH"
 }
 
-# 3. Check Backend Virtual Environment
+# 2. Check Backend Virtual Environment
 $venvPath = Join-Path $rootDir "backend\.venv\Scripts\python.exe"
 $venvExists = Test-Path $venvPath
 Report-Check "Python Virtual Environment (backend/.venv)" $venvExists "Path: $venvPath"
 
-# 4. Check Backend Directory Layout
+# 3. Check Backend Directory Layout
 $dataPath = Join-Path $rootDir "backend\data"
 $storagePath = Join-Path $rootDir "backend\storage"
 $uploadsPath = Join-Path $rootDir "backend\storage\uploads"
@@ -58,7 +51,7 @@ Report-Check "Local Storage Directory (backend/storage)" (Test-Path $storagePath
 Report-Check "Storage Uploads Directory (backend/storage/uploads)" (Test-Path $uploadsPath) "$uploadsPath"
 Report-Check "Storage Reports Directory (backend/storage/reports)" (Test-Path $reportsPath) "$reportsPath"
 
-# 5. Check Backend Migrations & Database Initialization
+# 4. Check Backend Migrations & Database Initialization
 if ($venvExists) {
     try {
         $alembicExe = Join-Path $rootDir "backend\.venv\Scripts\alembic.exe"
@@ -75,7 +68,7 @@ if ($venvExists) {
     Report-Check "Alembic Migrations & SQLite DB File" $false "Skipped: .venv not found"
 }
 
-# 6. Run Backend Tests
+# 5. Run Backend Tests
 if ($venvExists) {
     try {
         Push-Location (Join-Path $rootDir "backend")
@@ -90,7 +83,7 @@ if ($venvExists) {
     Report-Check "Backend Unit Tests (pytest)" $false "Skipped: .venv not found"
 }
 
-# 7. Check Frontend Dependencies & Typecheck
+# 6. Check Frontend Dependencies & Typecheck
 $frontendDir = Join-Path $rootDir "frontend"
 $nodeModules = Join-Path $frontendDir "node_modules"
 Report-Check "Frontend Dependencies (node_modules)" (Test-Path $nodeModules)
@@ -117,5 +110,6 @@ if ($allPassed) {
 } else {
     Write-Host "  FAILED: One or more checks failed. Please see above for details." -ForegroundColor Red
 }
+
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
