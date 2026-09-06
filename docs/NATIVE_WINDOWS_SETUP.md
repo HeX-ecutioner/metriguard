@@ -32,12 +32,7 @@ From the project root directory, run the PowerShell startup script:
 ```cmd
 .\start.ps1
 ```
-
-Or using Command Prompt / batch file:
-
-```cmd
-start.bat
-```
+*(If PowerShell script execution is blocked, run: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` or run `powershell -ExecutionPolicy Bypass -File .\start.ps1`.*
 
 This will:
 1. Verify Python and Node.js are available.
@@ -97,29 +92,21 @@ npm run dev
 - **Detailed Diagnostics**: `http://127.0.0.1:8000/health/detail`
 - **Interactive Swagger Docs**: `http://127.0.0.1:8000/docs`
 
-## 5. Environment Configuration
-
-### Backend (`backend/.env`)
+## 5. (Optional) Backend Environment Configuration
 
 Configuration is managed via `backend/app/core/config.py` using `pydantic-settings`.
 Copy `backend/.env.example` to `backend/.env`:
 
-```ps
+```haskell
 APP_ENV=development
 DATABASE_URL=sqlite:///./data/metriguard.db
 STORAGE_PATH=./storage
 MAX_UPLOAD_SIZE_MB=10
 CORS_ORIGINS=http://localhost:5173
-
-# Server settings
 HOST=127.0.0.1
 PORT=8000
-
-# AI Extractor Toggle (Set to true to use mock data for instant testing without OCR)
 USE_MOCK_EXTRACTOR=false
 ```
-
-No secrets or passwords are required for local development.
 
 ## 6. Directory Structure Created Automatically
 

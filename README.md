@@ -39,7 +39,15 @@ Before setting up MetriGuard on Windows, ensure the following software is instal
    pip install -r requirements.txt
    ```
 
-5. Verify environment variables in `backend/.env`:
+5. *(Optional)* Configure Environment Variables in `backend/.env`:
+   The backend ships with safe, built-in defaults for all settings (local SQLite, `127.0.0.1:8000`, etc.), so running without a `.env` works out-of-the-box. 
+   
+   For developer convenience and overriding any default configurations, a template is provided in `backend/.env.example`. You can copy it to create your own `backend/.env`:
+   ```ps
+   copy .env.example .env
+   ```
+
+   Key configurable variables:
    ```sh
    APP_ENV=development
    DATABASE_URL=sqlite:///./data/metriguard.db
@@ -48,6 +56,7 @@ Before setting up MetriGuard on Windows, ensure the following software is instal
    CORS_ORIGINS=http://localhost:5173
    HOST=127.0.0.1
    PORT=8000
+   USE_MOCK_EXTRACTOR=false
    ```
 
 ## 3. Frontend Setup
@@ -93,7 +102,7 @@ From the root workspace directory, run the native launcher script:
 ```powershell
 .\start.ps1
 ```
-*(Alternatively, double-click `start.bat` from Windows File Explorer).*
+*(If PowerShell script execution is blocked, run: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` or run `powershell -ExecutionPolicy Bypass -File .\start.ps1`.*
 
 This script automatically verifies dependencies, initializes directories, applies database migrations, and launches both backend and frontend servers in separate background jobs.
 
