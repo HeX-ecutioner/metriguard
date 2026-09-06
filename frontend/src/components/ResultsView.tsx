@@ -1,5 +1,5 @@
 import React from 'react';
-import type { InspectionResult } from '../App';
+import type { InspectionResult, Violation } from '../App';
 
 interface Props {
   result: InspectionResult;
@@ -35,7 +35,7 @@ const ResultsView: React.FC<Props> = ({ result }) => {
         <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
           {result.extracted_texts && result.extracted_texts.length > 0 ? (
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {result.extracted_texts.map((text, idx) => (
+              {result.extracted_texts.map((text: string, idx: number) => (
                 <li key={idx} style={{ paddingLeft: '1rem', borderLeft: '2px solid var(--primary-color)' }}>{text}</li>
               ))}
             </ul>
@@ -49,7 +49,7 @@ const ResultsView: React.FC<Props> = ({ result }) => {
         <h3 style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Rule Violations</h3>
         {result.violations && result.violations.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {result.violations.map((violation, idx) => (
+            {result.violations.map((violation: Violation, idx: number) => (
               <div key={idx} style={{ 
                 padding: '1rem', 
                 borderRadius: '8px', 
