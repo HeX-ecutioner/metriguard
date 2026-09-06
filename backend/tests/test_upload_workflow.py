@@ -190,28 +190,32 @@ def test_storage_failure(created_inspection, monkeypatch):
     assert "Simulated disk write failure" in res.json()["detail"]
 
 
-def test_get_inspection_with_images(created_inspection):
-    """Verify retrieving an inspection returns all attached images."""
+def test_reject_second_image_upload_with_409_conflict(created_inspection):
+    """Verify that uploading a second image to an existing inspection is rejected with HTTP 409 Conflict."""
     img1 = make_test_image(format="JPEG")
     img2 = make_test_image(format="PNG")
 
-    client.post(
+    res1 = client.post(
         f"/api/v1/inspections/{created_inspection}/images",
         files={"file": ("img1.jpg", img1, "image/jpeg")}
     )
-    client.post(
+    assert res1.status_code == 201
+
+    # Second upload attempt to the same inspection must fail with HTTP 409 Conflict
+    res2 = client.post(
         f"/api/v1/inspections/{created_inspection}/images",
         files={"file": ("img2.png", img2, "image/png")}
     )
+    assert res2.status_code == 409
+    assert "already contains" in res2.json()["detail"].lower() or "cannot accept" in res2.json()["detail"].lower()
 
+    # Verify inspection record remains unchanged with exactly 1 image
     res = client.get(f"/api/v1/inspections/{created_inspection}")
     assert res.status_code == 200
     data = res.json()
     assert data["id"] == created_inspection
-    assert len(data["images"]) == 2
-    filenames = [img["original_filename"] for img in data["images"]]
-    assert "img1.jpg" in filenames
-    assert "img2.png" in filenames
+    assert len(data["images"]) == 1
+    assert data["images"][0]["original_filename"] == "img1.jpg"
 
 
 def test_get_missing_inspection():

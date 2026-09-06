@@ -107,7 +107,7 @@ class InspectionOrchestrator:
         - Low-confidence extractions or ambiguous values route to MANUAL_REVIEW.
         - All declarations, violations, and results are persisted in SQLite.
         """
-        # 1. Verify inspection session exists
+        # 1. Verify inspection session exists and is eligible for upload
         inspection = get_inspection(db=db, inspection_id=inspection_id)
         if not inspection:
             raise HTTPException(
@@ -115,7 +115,22 @@ class InspectionOrchestrator:
                 detail=f"Inspection with ID {inspection_id} not found."
             )
 
-        # 2. Validate and decode image
+        # Core Business Invariant: Exactly one image per inspection session.
+        # An inspection session must never contain multiple uploaded images.
+        if inspection.images and len(inspection.images) > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Inspection session {inspection_id} already contains an uploaded image. Each inspection session allows exactly one image."
+            )
+
+        if inspection.status in (InspectionStatus.COMPLIANT, InspectionStatus.NON_COMPLIANT, InspectionStatus.MANUAL_REVIEW):
+            status_str = inspection.status.value if hasattr(inspection.status, "value") else str(inspection.status)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Inspection session {inspection_id} is already completed with status '{status_str}' and cannot accept new images."
+            )
+
+        # 2. Validate and decode image (rejects bad payload with 400/413/415 without corrupting session)
         try:
             validated = validate_and_decode_image(
                 content=file_bytes,
@@ -126,6 +141,13 @@ class InspectionOrchestrator:
         except ImageValidationError as e:
             raise HTTPException(status_code=e.status_code, detail=e.detail)
 
+        # Transition status to PROCESSING now that image is valid
+        update_inspection_status(
+            db=db,
+            inspection_id=inspection_id,
+            status=InspectionStatus.PROCESSING,
+        )
+
         # 3. Securely store image in local storage
         safe_original = Path(filename).name or "uploaded_package.jpg"
         try:
@@ -135,9 +157,11 @@ class InspectionOrchestrator:
             )
         except StorageError as se:
             logger.error(f"Storage failure for inspection {inspection_id}: {se.detail}")
+            update_inspection_status(db=db, inspection_id=inspection_id, status=InspectionStatus.FAILED)
             raise HTTPException(status_code=se.status_code, detail=se.detail)
 
-        # 4. Record PackageImage metadata in database
+        # 4. Record PackageImage metadata in database (enforcing single image constraint)
+        from sqlalchemy.exc import IntegrityError
         try:
             package_image = add_package_image(
                 db=db,
@@ -149,9 +173,19 @@ class InspectionOrchestrator:
                 width=validated.width,
                 height=validated.height,
             )
+        except IntegrityError as ie:
+            db.rollback()
+            await self.storage_service.delete_file(file_key)
+            logger.warning(f"Integrity violation adding image to inspection {inspection_id}: {ie}")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Inspection session {inspection_id} already has an attached image."
+            )
         except Exception as db_err:
+            db.rollback()
             logger.error(f"Failed to record image metadata in DB: {db_err}")
             await self.storage_service.delete_file(file_key)
+            update_inspection_status(db=db, inspection_id=inspection_id, status=InspectionStatus.FAILED)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to record image metadata in database."

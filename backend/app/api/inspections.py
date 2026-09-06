@@ -75,6 +75,11 @@ def list_inspection_sessions(
     "/inspections/{inspection_id}/images",
     response_model=PackageImageResponse,
     status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_409_CONFLICT: {
+            "description": "Inspection session already contains an uploaded image or has already been completed."
+        }
+    },
     summary="Upload and orchestrate Legal Metrology inspection for a package image"
 )
 async def upload_inspection_image(
