@@ -106,6 +106,7 @@ class PackageImage(Base):
         Integer,
         ForeignKey("inspections.id", ondelete="CASCADE"),
         nullable=False,
+        unique=True,
         index=True
     )
     file_path = Column(String(500), nullable=False)
