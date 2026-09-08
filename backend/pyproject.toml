@@ -13,7 +13,8 @@ dependencies = [
     "python-multipart",
     "opencv-python",
     "paddleocr",
-    "pillow"
+    "pillow",
+    "reportlab>=5.0.0"
 ]
 
 [project.optional-dependencies]
@@ -21,7 +22,8 @@ dev = [
     "pytest",
     "httpx",
     "ruff",
-    "mypy"
+    "mypy",
+    "pypdf>=5.0.0"
 ]
 
 [tool.pytest.ini_options]

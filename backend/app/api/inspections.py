@@ -22,6 +22,11 @@ from app.services.inspection_orchestrator import (
     InspectionOrchestrator,
     get_inspection_orchestrator,
 )
+from app.db.models import InspectionStatus
+from app.services.pdf_report_service import (
+    PDFReportService,
+    get_pdf_report_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +142,76 @@ def get_inspection_details(
             detail=f"Inspection with ID {inspection_id} not found."
         )
     return inspection
+
+
+@router.get(
+    "/inspections/{inspection_id}/report",
+    summary="Generate and stream an audit-ready PDF inspection report",
+    response_class=Response,
+    responses={
+        status.HTTP_200_OK: {
+            "content": {"application/pdf": {}},
+            "description": "Returns generated PDF report binary stream."
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Inspection not found."
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "Inspection is incomplete and cannot generate a report."
+        }
+    }
+)
+def generate_inspection_report(
+    inspection_id: int,
+    download: bool = False,
+    db: Session = Depends(get_db),
+    pdf_service: PDFReportService = Depends(get_pdf_report_service)
+):
+    """
+    Generates a formal PDF compliance report from an existing completed inspection.
+    This operation is strictly read-only and will not mutate inspection records or re-run AI inference.
+    """
+    inspection = get_inspection(db=db, inspection_id=inspection_id)
+    if not inspection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Inspection with ID {inspection_id} not found."
+        )
+
+    completed_statuses = {
+        InspectionStatus.COMPLIANT,
+        InspectionStatus.NON_COMPLIANT,
+        InspectionStatus.MANUAL_REVIEW,
+        InspectionStatus.FAILED,
+    }
+
+    if inspection.status not in completed_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Inspection #{inspection_id} is in status '{inspection.status.value}' and has not completed inspection yet. "
+                "PDF reports can only be generated for completed inspections."
+            )
+        )
+
+    try:
+        pdf_bytes = pdf_service.generate_report(inspection)
+    except Exception as e:
+        logger.exception(f"Error generating PDF report for inspection #{inspection_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate inspection report: {str(e)}"
+        )
+
+    disposition = "attachment" if download else "inline"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'{disposition}; filename="inspection_{inspection_id}_report.pdf"',
+            "Content-Type": "application/pdf"
+        }
+    )
 
 
 @router.get(
