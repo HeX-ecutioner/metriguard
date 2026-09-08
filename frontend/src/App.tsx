@@ -11,6 +11,7 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const [selectedInspectionId, setSelectedInspectionId] = useState<number | null>(null);
   const [activeInspection, setActiveInspection] = useState<Inspection | null>(null);
+  const [uploadSessionKey, setUploadSessionKey] = useState<number>(0);
 
   const handleUploadSuccess = (_image: PackageImage, inspection: Inspection) => {
     setActiveInspection(inspection);
@@ -21,8 +22,9 @@ function App() {
   };
 
   const handleUploadAnotherImage = () => {
-    // Reset active inspection state completely so new upload gets a brand-new ID
+    // Reset active inspection state completely so new upload gets a brand-new ID and clean UI
     setActiveInspection(null);
+    setUploadSessionKey((prev) => prev + 1);
   };
 
   const handleOpenDetail = (id: number) => {
@@ -32,6 +34,7 @@ function App() {
 
   const handleStartNewInspection = () => {
     setActiveInspection(null);
+    setUploadSessionKey((prev) => prev + 1);
     setCurrentView('new_inspection');
   };
 
@@ -100,6 +103,7 @@ function App() {
           <div className="app-grid fade-in">
             <section className="upload-column" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <ImageUpload
+                key={uploadSessionKey}
                 onUploadSuccess={handleUploadSuccess}
                 onInspectionCreated={handleInspectionCreated}
                 onUploadAnotherImage={handleUploadAnotherImage}

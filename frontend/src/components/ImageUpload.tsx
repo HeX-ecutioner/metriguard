@@ -30,6 +30,8 @@ const ImageUpload: React.FC<Props> = ({
 
   // Guard against stale asynchronous responses from previous/cancelled requests
   const activeRequestId = useRef<number>(0);
+  // Guard against concurrent / double-click inspection creation
+  const isSubmittingRef = useRef<boolean>(false);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -77,6 +79,7 @@ const ImageUpload: React.FC<Props> = ({
   const handleCancelSelection = () => {
     // Invalidate any pending async callbacks
     activeRequestId.current += 1;
+    isSubmittingRef.current = false;
     setSelectedFile(null);
     setPreviewUrl(null);
     setValidationError(null);
@@ -91,6 +94,7 @@ const ImageUpload: React.FC<Props> = ({
   // Abandon/Cancel in-flight processing safely
   const handleCancelProcessing = () => {
     activeRequestId.current += 1; // Invalidate any response from this request
+    isSubmittingRef.current = false;
     handleCancelSelection();
   };
 
@@ -100,6 +104,11 @@ const ImageUpload: React.FC<Props> = ({
       setValidationError('Please select an image file first.');
       return;
     }
+
+    if (isSubmittingRef.current || lifecycleState === 'PROCESSING') {
+      return;
+    }
+    isSubmittingRef.current = true;
 
     const currentReq = ++activeRequestId.current;
     setLifecycleState('PROCESSING');
@@ -153,12 +162,15 @@ const ImageUpload: React.FC<Props> = ({
       setValidationError(apiErr.detail || 'Failed to complete inspection.');
       setLifecycleState('ERROR');
       setUploadProgress(0);
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
   // STATE E: UPLOAD_ANOTHER_IMAGE - Resets everything to IDLE for a brand-new session
   const handleUploadAnotherImage = () => {
     activeRequestId.current += 1;
+    isSubmittingRef.current = false;
     setSelectedFile(null);
     setPreviewUrl(null);
     setValidationError(null);
@@ -182,8 +194,8 @@ const ImageUpload: React.FC<Props> = ({
           {lifecycleState === 'COMPLETED'
             ? 'Inspection Complete'
             : lifecycleState === 'PROCESSING'
-            ? 'Processing Inspection'
-            : 'Upload Package Image'}
+              ? 'Processing Inspection'
+              : 'Upload Package Image'}
         </h2>
         {inspectionId && lifecycleState !== 'IDLE' && (
           <span

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import ImageUpload from './ImageUpload';
 import { apiClient } from '../api/client';
-import type { PackageImage } from '../api/client';
+import type { PackageImage, Inspection } from '../api/client';
 
 describe('ImageUpload Component Lifecycle & Invariants', () => {
   beforeEach(() => {
@@ -275,4 +275,94 @@ describe('ImageUpload Component Lifecycle & Invariants', () => {
       expect(handleSuccess).not.toHaveBeenCalled();
     });
   });
+
+  it('double-click protection: rapidly clicking Start Inspection creates only one session', async () => {
+    let resolveCreate: (val: Inspection) => void = () => {};
+    const createPromise = new Promise<Inspection>((resolve) => {
+      resolveCreate = resolve;
+    });
+
+    const createSpy = vi.spyOn(apiClient, 'createInspection').mockReturnValue(createPromise);
+    const uploadSpy = vi.spyOn(apiClient, 'uploadInspectionImage').mockResolvedValue({
+      id: 501,
+      inspection_id: 123,
+      file_path: 'uploads/double.jpg',
+      original_filename: 'double.jpg',
+      mime_type: 'image/jpeg',
+      file_size: 1000,
+      width: 100,
+      height: 100,
+      created_at: '2026-09-08T12:00:00Z',
+    });
+
+    render(<ImageUpload />);
+
+    const file = new File(['fake-bytes'], 'double.jpg', { type: 'image/jpeg' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Start Inspection/i)).toBeDefined();
+    });
+
+    const startBtn = screen.getByText(/Start Inspection/i);
+
+    // Rapidly click twice
+    fireEvent.click(startBtn);
+    fireEvent.click(startBtn);
+
+    // Only one createInspection call should be initiated
+    expect(createSpy).toHaveBeenCalledTimes(1);
+
+    // Resolve the promise
+    await act(async () => {
+      resolveCreate({
+        id: 123,
+        status: 'CREATED',
+        product_name: null,
+        overall_confidence: null,
+        notes: null,
+        created_at: '2026-09-08T12:00:00Z',
+        updated_at: '2026-09-08T12:00:00Z',
+        images: [],
+      });
+    });
+
+    await waitFor(() => {
+      expect(uploadSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('error state: displays error detail with Retry and Cancel options', async () => {
+    vi.spyOn(apiClient, 'createInspection').mockRejectedValue({
+      detail: 'Inspection session limit reached.',
+      status_code: 429,
+    });
+
+    render(<ImageUpload />);
+
+    const file = new File(['fake-bytes'], 'fail.jpg', { type: 'image/jpeg' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Start Inspection/i)).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText(/Start Inspection/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeDefined();
+      expect(screen.getByText(/Inspection session limit reached/i)).toBeDefined();
+      expect(screen.getByText(/Retry Inspection/i)).toBeDefined();
+      expect(screen.getByText(/^Cancel$/i)).toBeDefined();
+    });
+
+    // Clicking Cancel returns to IDLE
+    fireEvent.click(screen.getByText(/^Cancel$/i));
+    await waitFor(() => {
+      expect(screen.getByText(/Drag & Drop Image Here/i)).toBeDefined();
+    });
+  });
 });
+
