@@ -225,6 +225,32 @@ class ApiClient {
   }
 
   /**
+   * Returns direct URL to download/view the generated PDF inspection report.
+   */
+  getInspectionReportUrl(inspectionId: number, download: boolean = false): string {
+    return this.getUrl(`/api/v1/inspections/${inspectionId}/report${download ? '?download=true' : ''}`);
+  }
+
+  /**
+   * Downloads the generated PDF inspection report as a Blob.
+   */
+  async downloadInspectionReport(inspectionId: number): Promise<Blob> {
+    const url = this.getInspectionReportUrl(inspectionId, true);
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => null);
+      throw {
+        detail: err?.detail || `Failed to download inspection report (HTTP ${response.status})`,
+        error_code: err?.error_code,
+        status_code: response.status,
+      } as ApiError;
+    }
+
+    return response.blob();
+  }
+
+  /**
    * Retrieves real-time dashboard statistics and top violations.
    */
   async getDashboardStats(): Promise<DashboardStats> {

@@ -24,6 +24,9 @@ const DECLARATION_LABELS: Record<string, string> = {
 };
 
 const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
+  const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
+  const [pdfError, setPdfError] = React.useState<string | null>(null);
+
   const confidencePercent = inspection.overall_confidence !== null && inspection.overall_confidence !== undefined
     ? (inspection.overall_confidence * 100).toFixed(1)
     : '0.0';
@@ -31,8 +34,32 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
   const confidenceVal = inspection.overall_confidence ?? 0;
   const isManualReview = inspection.status === 'MANUAL_REVIEW';
   const isFailed = inspection.status === 'FAILED';
+  const isCompleted = ['COMPLIANT', 'NON_COMPLIANT', 'MANUAL_REVIEW', 'FAILED'].includes(inspection.status);
   const primaryImage = inspection.images && inspection.images.length > 0 ? inspection.images[0] : null;
   const originalImageUrl = primaryImage ? apiClient.getImageFileUrl(inspection.id, primaryImage.id) : null;
+
+  const handleDownloadPdf = async () => {
+    if (isGeneratingPdf || !isCompleted) return;
+    setIsGeneratingPdf(true);
+    setPdfError(null);
+
+    try {
+      const blob = await apiClient.downloadInspectionReport(inspection.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `inspection_${inspection.id}_report.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      const apiErr = err as { detail?: string };
+      setPdfError(apiErr?.detail || 'Failed to generate PDF report. Please try again.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   return (
     <div className="glass-card fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -64,6 +91,24 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
               Open Original Image ↗
             </a>
           )}
+          {isCompleted && (
+            <button
+              type="button"
+              className="btn"
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              style={{
+                padding: '0.4rem 0.8rem',
+                fontSize: '0.85rem',
+                background: isGeneratingPdf ? 'rgba(100, 116, 139, 0.3)' : 'rgba(16, 185, 129, 0.2)',
+                borderColor: isGeneratingPdf ? 'var(--text-muted)' : 'var(--success-color)',
+                cursor: isGeneratingPdf ? 'not-allowed' : 'pointer',
+              }}
+              title="Download formal Legal Metrology compliance PDF report"
+            >
+              {isGeneratingPdf ? '⏳ Generating PDF...' : '📄 Generate PDF'}
+            </button>
+          )}
           {onUploadAnotherImage && (
             <button
               type="button"
@@ -76,6 +121,39 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
           )}
         </div>
       </div>
+
+      {/* PDF Generation Error Banner */}
+      {pdfError && (
+        <div
+          role="alert"
+          style={{
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid var(--error-color)',
+            color: 'var(--text-main)',
+            fontSize: '0.85rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>⚠️ {pdfError}</span>
+          <button
+            type="button"
+            onClick={() => setPdfError(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              fontSize: '1rem',
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* 2. Confidence Indicator */}
       <div>
