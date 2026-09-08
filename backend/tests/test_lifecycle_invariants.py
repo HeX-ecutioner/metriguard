@@ -174,3 +174,93 @@ def test_completed_inspection_cannot_receive_second_image():
     )
     assert res_dup.status_code == 409
     assert "already contains" in res_dup.json()["detail"].lower() or "cannot accept" in res_dup.json()["detail"].lower()
+
+
+def test_failed_inspection_cannot_receive_image():
+    """Verify that an inspection in FAILED status rejects image upload with 409 Conflict."""
+    from app.db.database import SessionLocal
+    from app.db.models import Inspection, InspectionStatus
+
+    insp_id = client.post("/api/v1/inspections", json={"product_name": "Failed Session Test"}).json()["id"]
+
+    # Manually transition to FAILED status in DB (simulating storage/system failure)
+    db = SessionLocal()
+    try:
+        insp = db.query(Inspection).filter(Inspection.id == insp_id).first()
+        insp.status = InspectionStatus.FAILED
+        db.commit()
+    finally:
+        db.close()
+
+    # Attempt to upload to FAILED session -> must be rejected with 409
+    res = client.post(
+        f"/api/v1/inspections/{insp_id}/images",
+        files={"file": ("upload.jpg", make_test_image(), "image/jpeg")}
+    )
+    assert res.status_code == 409
+    assert "cannot accept" in res.json()["detail"].lower()
+
+
+def test_processing_inspection_cannot_receive_image():
+    """Verify that an inspection in PROCESSING status rejects image upload with 409 Conflict."""
+    from app.db.database import SessionLocal
+    from app.db.models import Inspection, InspectionStatus
+
+    insp_id = client.post("/api/v1/inspections", json={"product_name": "Processing Session Test"}).json()["id"]
+
+    db = SessionLocal()
+    try:
+        insp = db.query(Inspection).filter(Inspection.id == insp_id).first()
+        insp.status = InspectionStatus.PROCESSING
+        db.commit()
+    finally:
+        db.close()
+
+    res = client.post(
+        f"/api/v1/inspections/{insp_id}/images",
+        files={"file": ("upload.jpg", make_test_image(), "image/jpeg")}
+    )
+    assert res.status_code == 409
+    assert "cannot accept" in res.json()["detail"].lower()
+
+
+def test_database_persistence_of_violation_and_declaration_fields():
+    """Verify that declarations, violations, and results are fully persisted in the database."""
+    items = [
+        OCRItem(
+            text="MRP Rs. 50.00",
+            confidence=0.98,
+            bounding_box=OCRBoundingBox(x=10, y=10, width=120, height=25),
+        ),
+        OCRItem(
+            text="Net Wt 100g",
+            confidence=0.95,
+            bounding_box=OCRBoundingBox(x=10, y=40, width=90, height=20),
+        ),
+    ]
+    custom_ocr = OCRService(provider=MockOCRProvider(custom_items=items))
+    app.dependency_overrides[get_inspection_orchestrator] = lambda: InspectionOrchestrator(
+        ocr_service=custom_ocr
+    )
+
+    insp_id = client.post("/api/v1/inspections", json={"product_name": "Persistence Pack"}).json()["id"]
+    upload_res = client.post(
+        f"/api/v1/inspections/{insp_id}/images",
+        files={"file": ("pack.jpg", make_test_image(), "image/jpeg")}
+    )
+    assert upload_res.status_code == 201
+
+    # Verify retrieval from GET endpoint
+    detail_res = client.get(f"/api/v1/inspections/{insp_id}")
+    assert detail_res.status_code == 200
+    details = detail_res.json()
+
+    assert details["id"] == insp_id
+    assert details["product_name"] == "Persistence Pack"
+    assert len(details["images"]) == 1
+    assert details["images"][0]["file_size"] > 0
+    assert len(details["declarations"]) >= 2
+    assert details["result"] is not None
+    assert "final_status" in details["result"]
+    assert "summary" in details["result"]
+

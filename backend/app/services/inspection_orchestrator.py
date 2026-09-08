@@ -123,11 +123,11 @@ class InspectionOrchestrator:
                 detail=f"Inspection session {inspection_id} already contains an uploaded image. Each inspection session allows exactly one image."
             )
 
-        if inspection.status in (InspectionStatus.COMPLIANT, InspectionStatus.NON_COMPLIANT, InspectionStatus.MANUAL_REVIEW):
+        if inspection.status != InspectionStatus.CREATED:
             status_str = inspection.status.value if hasattr(inspection.status, "value") else str(inspection.status)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Inspection session {inspection_id} is already completed with status '{status_str}' and cannot accept new images."
+                detail=f"Inspection session {inspection_id} is in status '{status_str}' and cannot accept new images. Each inspection session allows exactly one image."
             )
 
         # 2. Validate and decode image (rejects bad payload with 400/413/415 without corrupting session)
@@ -215,6 +215,40 @@ class InspectionOrchestrator:
         if ocr_failed or ocr_result is None:
             status_enum = InspectionStatus.MANUAL_REVIEW
             summary = f"OCR processing failed: {ocr_failure_reason or 'Image could not be read'}. Requires manual review."
+            set_inspection_result(
+                db=db,
+                inspection_id=inspection_id,
+                final_status=status_enum,
+                summary=summary,
+            )
+            update_inspection_status(
+                db=db,
+                inspection_id=inspection_id,
+                status=status_enum,
+                overall_confidence=0.0,
+            )
+            return PackageImageResponse(
+                id=package_image.id,
+                inspection_id=package_image.inspection_id,
+                file_path=package_image.file_path,
+                original_filename=package_image.original_filename,
+                mime_type=package_image.mime_type,
+                file_size=package_image.file_size,
+                width=package_image.width,
+                height=package_image.height,
+                created_at=package_image.created_at,
+                status=status_enum.value,
+                confidence_score=0.0,
+                extracted_texts=[],
+                violations=[],
+                image_url=image_url,
+            )
+
+        # CRITICAL SAFETY GUARANTEE: Empty OCR text (non-package image, extreme blur/glare)
+        # must NOT automatically become NON_COMPLIANT due to missing evidence.
+        if not ocr_result.items:
+            status_enum = InspectionStatus.MANUAL_REVIEW
+            summary = "No legible text or declarations detected on the uploaded image. Requires manual officer inspection."
             set_inspection_result(
                 db=db,
                 inspection_id=inspection_id,
@@ -336,7 +370,11 @@ class InspectionOrchestrator:
         # 8. Synthesize Status & Persist Findings
         # Determine status enum
         res_status = compliance_result.overall_status.upper()
-        if res_status == "COMPLIANT":
+        if ocr_result.is_low_confidence:
+            # CRITICAL SAFETY GUARANTEE: Low OCR confidence / text uncertainty must NOT
+            # automatically become NON_COMPLIANT due to missing evidence.
+            status_enum = InspectionStatus.MANUAL_REVIEW
+        elif res_status == "COMPLIANT":
             status_enum = InspectionStatus.COMPLIANT
         elif res_status == "NON_COMPLIANT":
             status_enum = InspectionStatus.NON_COMPLIANT
@@ -408,14 +446,21 @@ class InspectionOrchestrator:
             calc_confidence = min(calc_confidence, 0.65)
 
         # Persist synthesized summary
-        summary_text = (
-            f"Inspection completed with status {status_enum.value}. "
-            f"Evaluated {len(compliance_result.findings)} rules: "
-            f"{compliance_result.summary.get('PASS', 0)} passed, "
-            f"{compliance_result.summary.get('FAIL', 0)} failed, "
-            f"{compliance_result.summary.get('REVIEW', 0)} review required, "
-            f"{compliance_result.summary.get('NOT_APPLICABLE', 0)} not applicable."
-        )
+        if ocr_result.is_low_confidence:
+            summary_text = (
+                f"Inspection routed to MANUAL_REVIEW. Optical recognition confidence ({ocr_result.confidence * 100:.1f}%) "
+                f"is below threshold ({self.ocr_service.confidence_threshold * 100:.1f}%). "
+                f"Declarations could not be verified with automated certainty; physical package inspection required."
+            )
+        else:
+            summary_text = (
+                f"Inspection completed with status {status_enum.value}. "
+                f"Evaluated {len(compliance_result.findings)} rules: "
+                f"{compliance_result.summary.get('PASS', 0)} passed, "
+                f"{compliance_result.summary.get('FAIL', 0)} failed, "
+                f"{compliance_result.summary.get('REVIEW', 0)} review required, "
+                f"{compliance_result.summary.get('NOT_APPLICABLE', 0)} not applicable."
+            )
 
         set_inspection_result(
             db=db,
