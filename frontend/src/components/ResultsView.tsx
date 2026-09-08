@@ -30,6 +30,7 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
 
   const confidenceVal = inspection.overall_confidence ?? 0;
   const isManualReview = inspection.status === 'MANUAL_REVIEW';
+  const isFailed = inspection.status === 'FAILED';
   const primaryImage = inspection.images && inspection.images.length > 0 ? inspection.images[0] : null;
   const originalImageUrl = primaryImage ? apiClient.getImageFileUrl(inspection.id, primaryImage.id) : null;
 
@@ -94,7 +95,28 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
         </div>
       </div>
 
-      {/* 3. Manual Review Warnings */}
+      {/* 3a. Processing Failure Alert */}
+      {isFailed && (
+        <div
+          style={{
+            padding: '1rem 1.25rem',
+            borderRadius: '8px',
+            borderLeft: '4px solid var(--error-color)',
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '1.25rem' }}>❌</span>
+            <strong style={{ color: 'var(--error-color)' }}>Inspection Processing Failed</strong>
+          </div>
+          <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: 'var(--text-main)' }}>
+            {inspection.result?.summary || 'The inspection pipeline encountered an unrecoverable processing error (such as an image storage or database failure). This is distinct from a regulatory non-compliance finding.'}
+          </p>
+        </div>
+      )}
+
+      {/* 3b. Manual Review Warnings */}
       {isManualReview && (
         <div
           style={{
@@ -186,6 +208,20 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
             <p style={{ color: 'var(--success-color)', fontWeight: 500 }}>
               ✓ All mandatory Legal Metrology (2011) declarations are present and compliant. No violations detected.
             </p>
+          </div>
+        ) : isFailed ? (
+          <div
+            style={{
+              padding: '0.75rem',
+              borderRadius: '8px',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              textAlign: 'center',
+              color: '#fca5a5',
+              fontSize: '0.85rem',
+            }}
+          >
+            Inspection could not be completed due to a processing failure.
           </div>
         ) : (
           <div
