@@ -40,8 +40,11 @@ function App() {
 
   return (
     <div className="container">
-      <header className="header" style={{ marginBottom: '1.5rem' }}>
-        <h1>MetriGuard</h1>
+      <header className="header" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '0.25rem' }}>
+          <img src="/logo.png" alt="MetriGuard Logo" style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'contain' }} />
+          <h1 style={{ margin: 0 }}>MetriGuard</h1>
+        </div>
         <p>AI-Assisted Legal Metrology Compliance Inspection Platform</p>
       </header>
 
