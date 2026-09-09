@@ -20,11 +20,15 @@ app = FastAPI(
     title="Metriguard API",
     description="Legal Metrology Compliance Inspection Platform",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Configure CORS with typed settings
-cors_origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else [settings.CORS_ORIGINS]
+cors_origins = (
+    settings.CORS_ORIGINS
+    if isinstance(settings.CORS_ORIGINS, list)
+    else [settings.CORS_ORIGINS]
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,7 +45,6 @@ app.include_router(inspections.router, prefix="/api/v1")
 app.include_router(ocr.router, prefix="/api/v1")
 app.include_router(extraction.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
-
 
 
 @app.get("/")

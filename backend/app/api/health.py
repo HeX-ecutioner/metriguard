@@ -48,7 +48,9 @@ def health_check_detail():
     except Exception as se:
         storage_status = f"error: {str(se)}"
 
-    overall_healthy = (db_status in ("connected", "disabled")) and (storage_status == "available")
+    overall_healthy = (db_status in ("connected", "disabled")) and (
+        storage_status == "available"
+    )
 
     return {
         "status": "healthy" if overall_healthy else "degraded",
@@ -62,7 +64,9 @@ def health_check_detail():
             "path": storage_path,
         },
         "ai_extractor": {
-            "mode": "mock" if USE_MOCK_EXTRACTOR or settings.USE_MOCK_EXTRACTOR else "ocr",
+            "mode": (
+                "mock" if USE_MOCK_EXTRACTOR or settings.USE_MOCK_EXTRACTOR else "ocr"
+            ),
         },
         "version": "1.0.0",
     }

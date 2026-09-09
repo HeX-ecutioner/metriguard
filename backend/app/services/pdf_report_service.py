@@ -1,5 +1,5 @@
 """
-PDF Report Generation Service for AlgoForge Prototype - MK I.
+PDF Report Generation Service for MetriGuard Prototype - MK I.
 
 Generates audit-ready, deterministic PDF inspection reports from saved
 database entities without re-running OCR or regulatory evaluation.
@@ -29,7 +29,13 @@ from reportlab.platypus import (
     HRFlowable,
 )
 
-from app.db.models import Inspection, InspectionStatus, PackageImage, Declaration, Violation
+from app.db.models import (
+    Inspection,
+    InspectionStatus,
+    PackageImage,
+    Declaration,
+    Violation,
+)
 from app.services.storage import get_storage_service, StorageService
 
 logger = logging.getLogger(__name__)
@@ -51,12 +57,12 @@ DECLARATION_LABELS: Dict[str, str] = {
 }
 
 STATUS_COLORS: Dict[str, colors.Color] = {
-    "COMPLIANT": colors.HexColor("#10b981"),      # Emerald Green
+    "COMPLIANT": colors.HexColor("#10b981"),  # Emerald Green
     "NON_COMPLIANT": colors.HexColor("#ef4444"),  # Red
     "MANUAL_REVIEW": colors.HexColor("#f59e0b"),  # Amber
-    "FAILED": colors.HexColor("#dc2626"),         # Dark Red
-    "CREATED": colors.HexColor("#3b82f6"),        # Blue
-    "PROCESSING": colors.HexColor("#8b5cf6"),     # Purple
+    "FAILED": colors.HexColor("#dc2626"),  # Dark Red
+    "CREATED": colors.HexColor("#3b82f6"),  # Blue
+    "PROCESSING": colors.HexColor("#8b5cf6"),  # Purple
 }
 
 
@@ -64,6 +70,7 @@ class NumberedCanvas(canvas.Canvas):
     """
     Two-pass canvas for dynamic total page count calculation and running headers/footers.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._saved_page_states = []
@@ -87,7 +94,11 @@ class NumberedCanvas(canvas.Canvas):
 
         # Top Header (Only from page 2 onwards, page 1 has main title banner)
         if self._pageNumber > 1:
-            self.drawString(36, 810, "AlgoForge Prototype - MK I | Legal Metrology Compliance Inspection Report")
+            self.drawString(
+                36,
+                810,
+                "MetriGuard Prototype - MK I | Legal Metrology Compliance Inspection Report",
+            )
             self.setStrokeColor(colors.HexColor("#e2e8f0"))
             self.setLineWidth(0.5)
             self.line(36, 804, 559, 804)
@@ -97,7 +108,11 @@ class NumberedCanvas(canvas.Canvas):
         self.setLineWidth(0.5)
         self.line(36, 42, 559, 42)
 
-        self.drawString(36, 30, "AlgoForge Prototype - MK I  |  Automated Legal Metrology Screener  |  Not for Legal Certification")
+        self.drawString(
+            36,
+            30,
+            "MetriGuard Prototype - MK I  |  Automated Legal Metrology Screener  |  Not for Legal Certification",
+        )
         page_str = f"Page {self._pageNumber} of {total_pages}"
         self.drawRightString(559, 30, page_str)
 
@@ -184,40 +199,72 @@ class PDFReportService:
         # =========================================================================
         # 1. Header Banner & Branding
         # =========================================================================
-        status_val = inspection.status.value if hasattr(inspection.status, "value") else str(inspection.status)
+        status_val = (
+            inspection.status.value
+            if hasattr(inspection.status, "value")
+            else str(inspection.status)
+        )
         status_color = STATUS_COLORS.get(status_val, colors.HexColor("#64748b"))
 
         header_table_data = [
             [
-                Paragraph("<b>AlgoForge Prototype - MK I</b>", title_style),
+                Paragraph("<b>MetriGuard Prototype - MK I</b>", title_style),
                 Paragraph(
                     f"<font color='{status_color.hexval()}'><b>[{status_val.replace('_', ' ')}]</b></font>",
-                    ParagraphStyle("StatusBadge", parent=title_style, alignment=2, fontSize=13)
+                    ParagraphStyle(
+                        "StatusBadge", parent=title_style, alignment=2, fontSize=13
+                    ),
                 ),
             ],
             [
-                Paragraph("Legal Metrology (Packaged Commodities) Rules, 2011 - Automated Inspection Report", subtitle_style),
-                Paragraph(f"<b>Inspection #{inspection.id}</b>", ParagraphStyle("InspID", parent=subtitle_style, alignment=2))
-            ]
+                Paragraph(
+                    "Legal Metrology (Packaged Commodities) Rules, 2011 - Automated Inspection Report",
+                    subtitle_style,
+                ),
+                Paragraph(
+                    f"<b>Inspection #{inspection.id}</b>",
+                    ParagraphStyle("InspID", parent=subtitle_style, alignment=2),
+                ),
+            ],
         ]
         header_table = Table(header_table_data, colWidths=[360, 163])
-        header_table.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
-            ("TOPPADDING", (0, 0), (-1, -1), 1),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ]))
+        header_table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+                    ("TOPPADDING", (0, 0), (-1, -1), 1),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ]
+            )
+        )
         story.append(header_table)
         story.append(Spacer(1, 6))
-        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#cbd5e1"), spaceBefore=2, spaceAfter=8))
+        story.append(
+            HRFlowable(
+                width="100%",
+                thickness=1,
+                color=colors.HexColor("#cbd5e1"),
+                spaceBefore=2,
+                spaceAfter=8,
+            )
+        )
 
         # =========================================================================
         # 2. Executive Metadata Summary Grid
         # =========================================================================
-        created_at_str = inspection.created_at.strftime("%Y-%m-%d %H:%M:%S UTC") if inspection.created_at else "N/A"
+        created_at_str = (
+            inspection.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+            if inspection.created_at
+            else "N/A"
+        )
         report_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        conf_str = f"{(inspection.overall_confidence * 100):.1f}%" if inspection.overall_confidence is not None else "N/A"
+        conf_str = (
+            f"{(inspection.overall_confidence * 100):.1f}%"
+            if inspection.overall_confidence is not None
+            else "N/A"
+        )
         product_str = inspection.product_name or "N/A (Unspecified Commodity)"
 
         metadata_data = [
@@ -241,15 +288,19 @@ class PDFReportService:
             ],
         ]
         metadata_table = Table(metadata_data, colWidths=[120, 160, 115, 128])
-        metadata_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ]))
+        metadata_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
         story.append(metadata_table)
         story.append(Spacer(1, 10))
 
@@ -278,31 +329,32 @@ class PDFReportService:
             border_summary = colors.HexColor("#dc2626")
 
         summary_box = Table(
-            [
-                [
-                    Paragraph(
-                        f"<b>Executive Finding:</b> {summary_text}",
-                        body_style
-                    )
-                ]
-            ],
-            colWidths=[523]
+            [[Paragraph(f"<b>Executive Finding:</b> {summary_text}", body_style)]],
+            colWidths=[523],
         )
-        summary_box.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), bg_summary),
-            ("BOX", (0, 0), (-1, -1), 1, border_summary),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-        ]))
+        summary_box.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), bg_summary),
+                    ("BOX", (0, 0), (-1, -1), 1, border_summary),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
         story.append(summary_box)
         story.append(Spacer(1, 10))
 
         # =========================================================================
         # 4. Embedded Original Image & Evidence Reference
         # =========================================================================
-        story.append(Paragraph("<b>Uploaded Package Label & Visual Evidence</b>", section_title_style))
+        story.append(
+            Paragraph(
+                "<b>Uploaded Package Label & Visual Evidence</b>", section_title_style
+            )
+        )
 
         package_img = inspection.images[0] if inspection.images else None
         image_flowable = self._create_image_flowable(package_img)
@@ -319,22 +371,31 @@ class PDFReportService:
                             f"• File Size: {(package_img.file_size / 1024):.1f} KB<br/>"
                             f"• MIME Type: {package_img.mime_type if package_img else 'image/jpeg'}<br/><br/>"
                             f"<i>Visual evidence regions referenced in the regulatory tables correspond to pixel coordinate bounding boxes mapped to this image.</i>",
-                            body_style
-                        )
+                            body_style,
+                        ),
                     ]
                 ],
-                colWidths=[240, 283]
+                colWidths=[240, 283],
             )
-            img_table.setStyle(TableStyle([
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ]))
+            img_table.setStyle(
+                TableStyle(
+                    [
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                    ]
+                )
+            )
             story.append(img_table)
         else:
-            story.append(Paragraph("<i>No package image available in storage for this inspection session.</i>", body_style))
+            story.append(
+                Paragraph(
+                    "<i>No package image available in storage for this inspection session.</i>",
+                    body_style,
+                )
+            )
 
         story.append(Spacer(1, 10))
 
@@ -342,51 +403,90 @@ class PDFReportService:
         # 5. Regulatory Violations & Compliance Findings
         # =========================================================================
         violations_count = len(inspection.violations)
-        story.append(Paragraph(f"<b>Regulatory Compliance Findings ({violations_count})</b>", section_title_style))
+        story.append(
+            Paragraph(
+                f"<b>Regulatory Compliance Findings ({violations_count})</b>",
+                section_title_style,
+            )
+        )
 
         if violations_count == 0:
             if status_val == "COMPLIANT":
                 comp_box = Table(
-                    [[
-                        Paragraph(
-                            "✓ <b>All mandatory Legal Metrology (Packaged Commodities) Rules, 2011 declarations are present and compliant.</b> "
-                            "No statutory violations or irregularities were detected on the inspected label.",
-                            ParagraphStyle("CompBox", parent=body_style, textColor=colors.HexColor("#065f46"))
-                        )
-                    ]],
-                    colWidths=[523]
+                    [
+                        [
+                            Paragraph(
+                                "✓ <b>All mandatory Legal Metrology (Packaged Commodities) Rules, 2011 declarations are present and compliant.</b> "
+                                "No statutory violations or irregularities were detected on the inspected label.",
+                                ParagraphStyle(
+                                    "CompBox",
+                                    parent=body_style,
+                                    textColor=colors.HexColor("#065f46"),
+                                ),
+                            )
+                        ]
+                    ],
+                    colWidths=[523],
                 )
-                comp_box.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#d1fae5")),
-                    ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#10b981")),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                ]))
+                comp_box.setStyle(
+                    TableStyle(
+                        [
+                            (
+                                "BACKGROUND",
+                                (0, 0),
+                                (-1, -1),
+                                colors.HexColor("#d1fae5"),
+                            ),
+                            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#10b981")),
+                            ("TOPPADDING", (0, 0), (-1, -1), 6),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                        ]
+                    )
+                )
                 story.append(comp_box)
             elif status_val == "FAILED":
                 fail_box = Table(
-                    [[
-                        Paragraph(
-                            "❌ <b>Inspection Processing Failure:</b> An internal pipeline processing failure occurred (e.g. storage or database error). "
-                            "This status is distinct from a regulatory non-compliance finding.",
-                            ParagraphStyle("FailBox", parent=body_style, textColor=colors.HexColor("#991b1b"))
-                        )
-                    ]],
-                    colWidths=[523]
+                    [
+                        [
+                            Paragraph(
+                                "❌ <b>Inspection Processing Failure:</b> An internal pipeline processing failure occurred (e.g. storage or database error). "
+                                "This status is distinct from a regulatory non-compliance finding.",
+                                ParagraphStyle(
+                                    "FailBox",
+                                    parent=body_style,
+                                    textColor=colors.HexColor("#991b1b"),
+                                ),
+                            )
+                        ]
+                    ],
+                    colWidths=[523],
                 )
-                fail_box.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fee2e2")),
-                    ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#ef4444")),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                ]))
+                fail_box.setStyle(
+                    TableStyle(
+                        [
+                            (
+                                "BACKGROUND",
+                                (0, 0),
+                                (-1, -1),
+                                colors.HexColor("#fee2e2"),
+                            ),
+                            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#ef4444")),
+                            ("TOPPADDING", (0, 0), (-1, -1), 6),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                        ]
+                    )
+                )
                 story.append(fail_box)
             else:
-                story.append(Paragraph("<i>No specific rule violations detected.</i>", body_style))
+                story.append(
+                    Paragraph(
+                        "<i>No specific rule violations detected.</i>", body_style
+                    )
+                )
         else:
             viol_headers = [
                 Paragraph("<b>Rule ID / Ver</b>", bold_body),
@@ -404,33 +504,53 @@ class PDFReportService:
                 if v.expected_value or v.measured_value:
                     title_expl_str += f"<br/><i>Expected:</i> {v.expected_value or 'N/A'} | <i>Observed:</i> {v.measured_value or 'N/A'}"
 
-                conf_val = f"{(v.confidence * 100):.0f}%" if v.confidence is not None else "N/A"
-                sev_val = v.severity.value if hasattr(v.severity, "value") else str(v.severity)
+                conf_val = (
+                    f"{(v.confidence * 100):.0f}%"
+                    if v.confidence is not None
+                    else "N/A"
+                )
+                sev_val = (
+                    v.severity.value
+                    if hasattr(v.severity, "value")
+                    else str(v.severity)
+                )
 
                 # Visual Evidence Region
                 evidence_box = self._format_bbox(v.evidence_bounding_box)
                 if not evidence_box:
                     evidence_box = "Declaration Absent / Not Visible"
 
-                viol_rows.append([
-                    Paragraph(rule_id_str, body_style),
-                    Paragraph(title_expl_str, body_style),
-                    Paragraph(f"<b>{sev_val}</b>", body_style),
-                    Paragraph(conf_val, body_style),
-                    Paragraph(evidence_box, body_style),
-                ])
+                viol_rows.append(
+                    [
+                        Paragraph(rule_id_str, body_style),
+                        Paragraph(title_expl_str, body_style),
+                        Paragraph(f"<b>{sev_val}</b>", body_style),
+                        Paragraph(conf_val, body_style),
+                        Paragraph(evidence_box, body_style),
+                    ]
+                )
 
             viol_table = Table(viol_rows, colWidths=[105, 183, 55, 55, 125])
-            viol_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
-                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ]))
+            viol_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                        (
+                            "INNERGRID",
+                            (0, 0),
+                            (-1, -1),
+                            0.5,
+                            colors.HexColor("#e2e8f0"),
+                        ),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ]
+                )
+            )
             story.append(viol_table)
 
         story.append(Spacer(1, 10))
@@ -439,10 +559,20 @@ class PDFReportService:
         # 6. Extracted Statutory Declarations Table
         # =========================================================================
         decl_count = len(inspection.declarations)
-        story.append(Paragraph(f"<b>Extracted Package Declarations ({decl_count})</b>", section_title_style))
+        story.append(
+            Paragraph(
+                f"<b>Extracted Package Declarations ({decl_count})</b>",
+                section_title_style,
+            )
+        )
 
         if decl_count == 0:
-            story.append(Paragraph("<i>No declarations were detected or extracted from this image.</i>", body_style))
+            story.append(
+                Paragraph(
+                    "<i>No declarations were detected or extracted from this image.</i>",
+                    body_style,
+                )
+            )
         else:
             decl_headers = [
                 Paragraph("<b>Declaration Type</b>", bold_body),
@@ -453,28 +583,49 @@ class PDFReportService:
             decl_rows = [decl_headers]
 
             for d in inspection.declarations:
-                decl_label = DECLARATION_LABELS.get(d.declaration_type, d.declaration_type.replace("_", " ").title())
-                conf_val = f"{(d.confidence * 100):.0f}%" if d.confidence is not None else "N/A"
+                decl_label = DECLARATION_LABELS.get(
+                    d.declaration_type, d.declaration_type.replace("_", " ").title()
+                )
+                conf_val = (
+                    f"{(d.confidence * 100):.0f}%"
+                    if d.confidence is not None
+                    else "N/A"
+                )
                 bbox_str = self._format_bbox(d.bounding_box) or "N/A"
 
-                decl_rows.append([
-                    Paragraph(f"<b>{decl_label}</b>", body_style),
-                    Paragraph(d.extracted_value or "<i>Missing / Not Detected</i>", body_style),
-                    Paragraph(conf_val, body_style),
-                    Paragraph(bbox_str, body_style),
-                ])
+                decl_rows.append(
+                    [
+                        Paragraph(f"<b>{decl_label}</b>", body_style),
+                        Paragraph(
+                            d.extracted_value or "<i>Missing / Not Detected</i>",
+                            body_style,
+                        ),
+                        Paragraph(conf_val, body_style),
+                        Paragraph(bbox_str, body_style),
+                    ]
+                )
 
             decl_table = Table(decl_rows, colWidths=[150, 203, 60, 110])
-            decl_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
-                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ]))
+            decl_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                        (
+                            "INNERGRID",
+                            (0, 0),
+                            (-1, -1),
+                            0.5,
+                            colors.HexColor("#e2e8f0"),
+                        ),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ]
+                )
+            )
             story.append(decl_table)
 
         story.append(Spacer(1, 14))
@@ -483,7 +634,7 @@ class PDFReportService:
         # 7. Statutory Disclaimer & Regulatory Notice
         # =========================================================================
         disclaimer_text = (
-            "<b>STATUTORY PROTOTYPE DISCLAIMER:</b> This automated inspection report was generated by AlgoForge Prototype - MK I "
+            "<b>STATUTORY PROTOTYPE DISCLAIMER:</b> This automated inspection report was generated by MetriGuard Prototype - MK I "
             "for screening compliance under the Legal Metrology Act, 2009 and the Legal Metrology (Packaged Commodities) Rules, 2011. "
             "This report is an AI-assisted screening assessment and does <b>NOT</b> constitute legal certification, statutory sanction, "
             "or final enforcement action. Any regulatory proceedings require independent physical verification and corroboration by an "
@@ -491,17 +642,20 @@ class PDFReportService:
         )
 
         disclaimer_box = Table(
-            [[Paragraph(disclaimer_text, disclaimer_style)]],
-            colWidths=[523]
+            [[Paragraph(disclaimer_text, disclaimer_style)]], colWidths=[523]
         )
-        disclaimer_box.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#94a3b8")),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-        ]))
+        disclaimer_box.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#94a3b8")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
         story.append(KeepTogether([disclaimer_box]))
 
         # Build document using NumberedCanvas
@@ -509,7 +663,9 @@ class PDFReportService:
         buffer.seek(0)
         return buffer.getvalue()
 
-    def _create_image_flowable(self, package_image: Optional[PackageImage]) -> Optional[RLImage]:
+    def _create_image_flowable(
+        self, package_image: Optional[PackageImage]
+    ) -> Optional[RLImage]:
         """
         Creates a ReportLab Image flowable scaled proportionally within bounds.
         """
