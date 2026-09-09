@@ -1,11 +1,4 @@
-# Auto-detect text files and normalize line endings
 * text=auto
-
-# GitHub Linguist language detection overrides for docs folder
-docs/*.md linguist-detectable=true
-docs/*.md linguist-documentation=false
-docs/**/*.md linguist-detectable=true
-docs/**/*.md linguist-documentation=false
 *.yml linguist-detectable=true
 *.yml linguist-documentation=false
 *.yaml linguist-detectable=true
