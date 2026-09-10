@@ -112,6 +112,7 @@ class PackageFacts(BaseModel):
             package_type=package_type,
             commodity_category=commodity_category,
             is_imported=is_imported,
+            overall_confidence=getattr(extraction_result, "overall_confidence", 1.0),
             image_id=extraction_result.image_id,
             metadata=metadata or {},
         )

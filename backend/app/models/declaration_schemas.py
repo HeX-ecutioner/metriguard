@@ -98,3 +98,9 @@ class DeclarationExtractionResult(BaseModel):
         default=False,
         description="True if any declaration type has multiple conflicting candidates"
     )
+    overall_confidence: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Overall OCR/extraction scan confidence"
+    )
