@@ -6,7 +6,7 @@ Handles multi-candidate resolution, conflict detection, and audit traceability.
 """
 
 import logging
-from typing import List, Dict, Optional, Union, Any, Tuple
+from typing import List, Dict, Optional, Union, Any, Tuple, Set
 from collections import defaultdict
 
 from app.models.ocr_schemas import OCRResult, OCRItem, OCRBoundingBox
@@ -52,13 +52,71 @@ class DeclarationExtractor:
         # 1. Normalize input into a uniform list of OCRItem
         ocr_items, effective_image_id = self._normalize_input(ocr_input, image_id)
 
-        # 2. Extract candidate matches across all items
+        scan_confidence = 1.0
+        if isinstance(ocr_input, OCRResult):
+            scan_confidence = ocr_input.confidence
+        elif ocr_items:
+            scan_confidence = round(sum(it.confidence for it in ocr_items) / len(ocr_items), 4)
+
+        # 2. Multi-resolution layout reconstruction:
+        #    a) Raw OCR items
+        #    b) Horizontally reconstructed lines (grouping two-column labels / key-value items)
+        #    c) Multi-line consecutive sliding windows (for composite manufacturer/packer/consumer care blocks)
+        reconstructed_lines = self._reconstruct_reading_lines(ocr_items)
+        multiline_windows = self._generate_multiline_windows(reconstructed_lines, max_window=5)
+
+        # Composite multi-line declaration types that may span multiple lines
+        COMPOSITE_MULTILINE_TYPES = {
+            DeclarationType.MANUFACTURER,
+            DeclarationType.PACKER,
+            DeclarationType.IMPORTER,
+            DeclarationType.CONSUMER_CARE,
+        }
+
         all_candidates: List[ExtractionCandidate] = []
-        for item in ocr_items:
+
+        # 3. Extract candidate matches:
+        #    a) Base scan units: raw OCR items and horizontally reconstructed lines (all declaration types)
+        base_units = list(ocr_items)
+        seen_texts = {it.text.strip() for it in base_units if it.text}
+        for rl in reconstructed_lines:
+            rl_text = rl.text.strip()
+            if rl_text and rl_text not in seen_texts:
+                base_units.append(rl)
+                seen_texts.add(rl_text)
+
+        for item in base_units:
             candidates = self._extract_item_candidates(item, effective_image_id)
             all_candidates.extend(candidates)
 
-        # 3. Consolidate and resolve candidates per declaration type
+        #    b) Multi-line sliding windows (strictly composite multi-line declarations)
+        seen_mw_texts = set()
+        for mw in multiline_windows:
+            mw_text = mw.text.strip()
+            if mw_text and mw_text not in seen_texts and mw_text not in seen_mw_texts:
+                seen_mw_texts.add(mw_text)
+                candidates = self._extract_item_candidates(
+                    mw, effective_image_id, allowed_types=COMPOSITE_MULTILINE_TYPES
+                )
+                all_candidates.extend(candidates)
+
+        #    c) Full consolidated text if available (strictly composite multi-line declarations)
+        if isinstance(ocr_input, OCRResult) and ocr_input.recognized_text:
+            rec_text = ocr_input.recognized_text.strip()
+            if rec_text and rec_text not in seen_texts and rec_text not in seen_mw_texts:
+                full_box = ocr_input.bounding_box or (reconstructed_lines[0].bounding_box if reconstructed_lines else None)
+                full_item = OCRItem(
+                    text=rec_text,
+                    confidence=ocr_input.confidence,
+                    bounding_box=full_box or OCRBoundingBox(x=0, y=0, width=100, height=100),
+                    page_or_region_id=ocr_input.page_or_region_id
+                )
+                candidates = self._extract_item_candidates(
+                    full_item, effective_image_id, allowed_types=COMPOSITE_MULTILINE_TYPES
+                )
+                all_candidates.extend(candidates)
+
+        # 4. Consolidate and resolve candidates per declaration type
         declarations: Dict[DeclarationType, ExtractedDeclaration] = {}
         summary_counts: Dict[str, int] = defaultdict(int)
         has_ambiguities = False
@@ -77,6 +135,7 @@ class DeclarationExtractor:
             all_candidates=all_candidates,
             summary=dict(summary_counts),
             has_ambiguities=has_ambiguities,
+            overall_confidence=scan_confidence,
         )
 
     def _normalize_input(
@@ -136,18 +195,108 @@ class DeclarationExtractor:
 
         return [], effective_image_id
 
+    def _reconstruct_reading_lines(self, items: List[OCRItem]) -> List[OCRItem]:
+        """
+        Clusters OCR items sharing the same horizontal baseline (two-column labels,
+        key-value pairs) into unified horizontal reading lines.
+        """
+        if not items:
+            return []
+
+        # Sort items top-to-bottom, then left-to-right
+        sorted_items = sorted(
+            items,
+            key=lambda it: (it.bounding_box.y if it.bounding_box else 0, it.bounding_box.x if it.bounding_box else 0)
+        )
+        lines: List[List[OCRItem]] = []
+
+        for it in sorted_items:
+            if not it.bounding_box:
+                lines.append([it])
+                continue
+
+            it_cy = it.bounding_box.y + it.bounding_box.height / 2.0
+            placed = False
+            for line in lines:
+                valid_boxes = [m.bounding_box for m in line if m.bounding_box]
+                if not valid_boxes:
+                    continue
+                line_cy = sum(b.y + b.height / 2.0 for b in valid_boxes) / len(valid_boxes)
+                line_avg_h = sum(b.height for b in valid_boxes) / len(valid_boxes)
+                # Allow horizontal clustering if centers are within 60% of average line height
+                if abs(it_cy - line_cy) <= max(it.bounding_box.height, line_avg_h) * 0.6:
+                    line.append(it)
+                    placed = True
+                    break
+            if not placed:
+                lines.append([it])
+
+        merged_items: List[OCRItem] = []
+        for line in lines:
+            line_sorted = sorted(line, key=lambda it: it.bounding_box.x if it.bounding_box else 0)
+            text = " ".join(it.text.strip() for it in line_sorted if it.text.strip())
+            valid_boxes = [it.bounding_box for it in line_sorted if it.bounding_box]
+            if valid_boxes:
+                min_x = min(b.x for b in valid_boxes)
+                min_y = min(b.y for b in valid_boxes)
+                max_x = max(b.x + b.width for b in valid_boxes)
+                max_y = max(b.y + b.height for b in valid_boxes)
+                bbox = OCRBoundingBox(x=min_x, y=min_y, width=max(0, max_x - min_x), height=max(0, max_y - min_y))
+            else:
+                bbox = OCRBoundingBox(x=0, y=0, width=0, height=0)
+            avg_conf = sum(it.confidence for it in line_sorted) / len(line_sorted)
+            merged_items.append(OCRItem(
+                text=text,
+                confidence=avg_conf,
+                bounding_box=bbox,
+                page_or_region_id=line_sorted[0].page_or_region_id if line_sorted else None
+            ))
+        return merged_items
+
+    def _generate_multiline_windows(self, lines: List[OCRItem], max_window: int = 5) -> List[OCRItem]:
+        """
+        Generates sliding window blocks of consecutive lines (2 to max_window lines)
+        to capture multi-line entity names, addresses, and consumer care details.
+        """
+        windows: List[OCRItem] = []
+        n = len(lines)
+        for w in range(2, min(max_window + 1, n + 1)):
+            for i in range(n - w + 1):
+                window = lines[i:i + w]
+                text = " ".join(it.text.strip() for it in window if it.text.strip())
+                valid_boxes = [it.bounding_box for it in window if it.bounding_box]
+                if valid_boxes:
+                    min_x = min(b.x for b in valid_boxes)
+                    min_y = min(b.y for b in valid_boxes)
+                    max_x = max(b.x + b.width for b in valid_boxes)
+                    max_y = max(b.y + b.height for b in valid_boxes)
+                    bbox = OCRBoundingBox(x=min_x, y=min_y, width=max(0, max_x - min_x), height=max(0, max_y - min_y))
+                else:
+                    bbox = OCRBoundingBox(x=0, y=0, width=0, height=0)
+                avg_conf = sum(it.confidence for it in window) / len(window)
+                windows.append(OCRItem(
+                    text=text,
+                    confidence=avg_conf,
+                    bounding_box=bbox,
+                    page_or_region_id=window[0].page_or_region_id if window else None
+                ))
+        return windows
+
     def _extract_item_candidates(
         self,
         item: OCRItem,
-        source_image_id: Optional[Union[int, str]]
+        source_image_id: Optional[Union[int, str]],
+        allowed_types: Optional[Set[DeclarationType]] = None,
     ) -> List[ExtractionCandidate]:
-        """Matches all patterns against an individual OCR item text."""
+        """Matches patterns against an individual OCR item text, optionally filtered by declaration types."""
         matched_candidates: List[ExtractionCandidate] = []
         text = item.text.strip()
         if not text:
             return matched_candidates
 
         for pattern_def in self.patterns:
+            if allowed_types is not None and pattern_def.declaration_type not in allowed_types:
+                continue
             matches = list(pattern_def.pattern.finditer(text))
             for match in matches:
                 try:
@@ -206,15 +355,16 @@ class DeclarationExtractor:
                 line_val_map[key] = c
         unique_candidates: List[ExtractionCandidate] = list(line_val_map.values())
 
-        # Filter out candidates that are strict substrings of another candidate on the same line
-        # (e.g. phone number or email inside a full composite consumer care line)
+        # Filter out candidates that are strict substrings/subsegments of another candidate
+        # (e.g. phone number or email inside a full composite consumer care line,
+        # or company name inside full company name + complete address)
         subsegment_indices = set()
         for i, c1 in enumerate(unique_candidates):
             for j, c2 in enumerate(unique_candidates):
                 if i != j and c1.normalized_value and c2.normalized_value:
-                    if (c1.original_ocr_text == c2.original_ocr_text and
-                            c1.normalized_value in c2.normalized_value and
-                            len(c1.normalized_value) < len(c2.normalized_value)):
+                    val1 = c1.normalized_value.lower().strip()
+                    val2 = c2.normalized_value.lower().strip()
+                    if val1 in val2 and len(val1) < len(val2):
                         subsegment_indices.add(i)
 
         effective_candidates = [c for idx, c in enumerate(unique_candidates) if idx not in subsegment_indices]
