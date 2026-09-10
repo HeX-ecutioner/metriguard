@@ -218,8 +218,20 @@ def normalize_consumer_care(raw: str) -> Optional[str]:
         return None
     cleaned = _clean_text(raw)
     # Strip common leading label
-    cleaned = re.sub(r"(?i)^(?:consumer|customer)\s*(?:care|service|cell)?\s*(?:details|cell|helpline)?\s*[:=\-]?\s*", "", cleaned)
-    return cleaned.strip()
+    cleaned = re.sub(
+        r"(?i)^(?:for\s*)?(?:consumer|customer)\s*(?:care|service|cell|complaints|queries|feedback)?\s*(?:details|cell|helpline)?\s*[:=\-]?\s*",
+        "",
+        cleaned
+    )
+    cleaned = cleaned.strip()
+    # Strip leading cell / address artifact prefixes e.g. "cell at the address - " or "cell at the "
+    cleaned = re.sub(r"(?i)^(?:cell\s+(?:at\s+(?:the\s+)?)?)?(?:address\s*[:=\-]\s*)?", "", cleaned).strip(" ,.-")
+    # Filter out non-contact fragments that don't convey contact information
+    if cleaned.lower() in ("cell at the", "cell", "at the", "details", "contact", "helpline", "care", "customer care"):
+        return None
+    if len(cleaned) < 4:
+        return None
+    return cleaned
 
 
 def normalize_entity(raw: str) -> Optional[str]:
@@ -229,7 +241,7 @@ def normalize_entity(raw: str) -> Optional[str]:
     cleaned = _clean_text(raw)
     # Strip label prefix
     cleaned = re.sub(
-        r"(?i)^(?:mfd\.?\s*by|manufactured\s*by|mfg\.?\s*by|packed\s*by|pkd\.?\s*by|re-?packed\s*by|imported\s*by|imp\.?\s*by)\s*[:=\-]?\s*",
+        r"(?i)^(?:manufactured\s*(?:\/|\&|and)?\s*(?:licensed\s*(?:\/|\&|and)?\s*)?marketed\s*by|manufactured\s*for\s*(?:\/|\&|and)?\s*marketed\s*by|mfd\.?\s*(?:\/|\&|and)?\s*mktd\.?\s*by|mfd\.?\s*by|manufactured\s*by|mfg\.?\s*by|marketed\s*by|packed\s*by|pkd\.?\s*by|re-?packed\s*by|imported\s*by|imp\.?\s*by|produced\s*by)\s*[:=\-]?\s*",
         "",
         cleaned
     )
@@ -255,7 +267,7 @@ EXTRACTION_PATTERNS: List[PatternDefinition] = [
         name="mrp_standard",
         declaration_type=DeclarationType.MRP,
         pattern=re.compile(
-            r"(?i)\b(?:M\.?R\.?P\.?|MR\s*P|MAX(?:IMUM)?\s*RETAIL\s*PRICE)\s*[:=–\-]?\s*(?:(?:Rs\.?|RS\.?|INR|₹|R)\s*)?([0-9]+(?:[.,][0-9]{1,2})?(?:\s*\/\s*[-=.\s]*(?:only)?)?)",
+            r"(?i)\b(?:M\.?R\.?P\.?|MR\s*P|MAX(?:IMUM)?\s*RETAIL\s*PRICE)\b[^0-9\n\r]*(?:(?:Rs\.?|RS\.?|INR|₹|R)\s*)?([0-9]+(?:[.,][0-9]{1,2})?(?:\s*\/\s*[-=.\s]*(?:only)?)?)",
         ),
         extractor_func=lambda m: (m.group(1), normalize_mrp(m.group(1))),
         confidence_weight=1.0,
@@ -266,7 +278,7 @@ EXTRACTION_PATTERNS: List[PatternDefinition] = [
         name="mrp_typo_mbp",
         declaration_type=DeclarationType.MRP,
         pattern=re.compile(
-            r"(?i)\b(?:M\.?B\.?P\.?|NRP|M\.?A\.?P\.?)\s*[:=–\-]?\s*(?:(?:Rs\.?|RS\.?|INR|₹|R)\s*)?([0-9]+(?:[.,][0-9]{1,2})?(?:\s*\/\s*[-=.\s]*(?:only)?)?)",
+            r"(?i)\b(?:M\.?B\.?P\.?|NRP|M\.?A\.?P\.?)\b[^0-9\n\r]*(?:(?:Rs\.?|RS\.?|INR|₹|R)\s*)?([0-9]+(?:[.,][0-9]{1,2})?(?:\s*\/\s*[-=.\s]*(?:only)?)?)",
         ),
         extractor_func=lambda m: (m.group(1), normalize_mrp(m.group(1))),
         confidence_weight=0.88,
@@ -333,12 +345,12 @@ EXTRACTION_PATTERNS: List[PatternDefinition] = [
     ),
 
     # 4. MANUFACTURE_DATE
-    # Mfg Date: 15/10/2025, MFD: 10/2025, Date of Mfg: Oct 2025
+    # Mfg Date: 15/10/2025, MFD: 10/2025, Date of Mfg: Oct 2025, Month & Year of Manufacture: Feb 2022
     PatternDefinition(
         name="mfg_date_standard",
         declaration_type=DeclarationType.MANUFACTURE_DATE,
         pattern=re.compile(
-            r"(?i)\b(?:MFG\.?\s*DATE|MFD\.?\s*DATE|DATE\s*OF\s*MFG\.?|DATE\s*OF\s*MANUFACTURE|MANUFACTURED\s*(?:ON|DATE)?|MFD\.?|MFG\.?)\s*[:=–\-]?\s*([0-9]{1,2}[/\-\.][0-9]{1,2}[/\-\.][0-9]{2,4}|[0-9]{1,2}[/\-\.][0-9]{2,4}|(?:(?:0?[1-9]|[12]\d|3[01])\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[,\s]+(?:20[0-9]{2}|[0-9]{2}))",
+            r"(?i)\b(?:(?:MONTH\s*(?:&|AND|\/)?\s*YEAR\s*OF\s*)?(?:MFG\.?\s*DATE|MFD\.?\s*DATE|DATE\s*OF\s*MFG\.?|DATE\s*OF\s*MANUFACTURE|MANUFACTURE(?:D)?\s*(?:ON|DATE)?|MFD\.?|MFG\.?|MANUFACTURE)|MONTH\s*(?:&|AND|\/)?\s*YEAR\s*(?:OF\s*)?(?:MANUFACTURE|MFG|MFD))\s*[:=–\-]?\s*([0-9]{1,2}[/\-\.][0-9]{1,2}[/\-\.][0-9]{2,4}|[0-9]{1,2}[/\-\.][0-9]{2,4}|(?:(?:0?[1-9]|[12]\d|3[01])\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[,\s]+(?:20[0-9]{2}|[0-9]{2}))",
         ),
         extractor_func=lambda m: (m.group(1), normalize_date(m.group(1))),
         confidence_weight=1.0,
@@ -357,12 +369,12 @@ EXTRACTION_PATTERNS: List[PatternDefinition] = [
     ),
 
     # 5. PACKING_DATE
-    # Pkd: 15/10/2025, Packed on: 10/2025, Date of Packing: Oct 2025
+    # Pkd: 15/10/2025, Packed on: 10/2025, Date of Packing: Oct 2025, Month & Year of Packing: Feb 2022
     PatternDefinition(
         name="pkd_date_standard",
         declaration_type=DeclarationType.PACKING_DATE,
         pattern=re.compile(
-            r"(?i)\b(?:PKD\.?\s*DATE|PACKING\s*DATE|DATE\s*OF\s*PACKING|PACKED\s*(?:ON|DATE)?|PKD\.?)\s*[:=–\-]?\s*([0-9]{1,2}[/\-\.][0-9]{1,2}[/\-\.][0-9]{2,4}|[0-9]{1,2}[/\-\.][0-9]{2,4}|(?:(?:0?[1-9]|[12]\d|3[01])\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[,\s]+(?:20[0-9]{2}|[0-9]{2}))",
+            r"(?i)\b(?:(?:MONTH\s*(?:&|AND|\/)?\s*YEAR\s*OF\s*)?(?:PKD\.?\s*DATE|PACKING\s*DATE|DATE\s*OF\s*PACKING|DATE\s*OF\s*PRE-?PACKING|PACKED\s*(?:ON|DATE)?|PKD\.?|PACKING|PRE-?PACKING)|MONTH\s*(?:&|AND|\/)?\s*YEAR\s*(?:OF\s*)?(?:PACKING|PKD|PRE-?PACKING))\s*[:=–\-]?\s*([0-9]{1,2}[/\-\.][0-9]{1,2}[/\-\.][0-9]{2,4}|[0-9]{1,2}[/\-\.][0-9]{2,4}|(?:(?:0?[1-9]|[12]\d|3[01])\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[,\s]+(?:20[0-9]{2}|[0-9]{2}))",
         ),
         extractor_func=lambda m: (m.group(1), normalize_date(m.group(1))),
         confidence_weight=1.0,
@@ -423,7 +435,7 @@ EXTRACTION_PATTERNS: List[PatternDefinition] = [
         name="country_origin_standard",
         declaration_type=DeclarationType.COUNTRY_OF_ORIGIN,
         pattern=re.compile(
-            r"(?i)\b(?:COUNTRY\s*OF\s*ORIGIN|MADE\s*IN|PRODUCT\s*OF|PRODUCE\s*OF|ORIGIN)\s*[:=–\-]?\s*([a-zA-Z\s]{3,30}?)(?=[,;\.\n\r]|\s+(?:by|for|mfg|pkd|mrp)|\s*$)",
+            r"(?i)\b(?:COUNTRY\s*OF\s*ORIGIN|MADE\s*IN|PRODUCT\s*OF|PRODUCE\s*OF|ORIGIN)\s*[:=–\-]?\s*(India|Bharat|China|USA|United States(?: of America)?|UK|United Kingdom|Japan|Germany|Bangladesh|Thailand|Vietnam|Korea|Italy|France|Taiwan|Malaysia|Indonesia|Sri Lanka|Nepal|[a-zA-Z]{3,20}\b)",
         ),
         extractor_func=lambda m: (m.group(1), normalize_country(m.group(1))),
         confidence_weight=1.0,
@@ -436,7 +448,7 @@ EXTRACTION_PATTERNS: List[PatternDefinition] = [
         name="manufacturer_standard",
         declaration_type=DeclarationType.MANUFACTURER,
         pattern=re.compile(
-            r"(?i)\b(?:MFD\.?\s*BY|MANUFACTURED\s*BY|MFG\.?\s*BY|PRODUCED\s*BY)\s*[:=–\-]?\s*([^\n\r]+?)(?=(?:\b(?:PKD|PACKED|IMPORTED|MRP|NET|BATCH|EXP|BB|BEST|FOR\s*FEEDBACK)\b)|$)",
+            r"(?i)\b(?:MANUFACTURED\s*(?:\/|\&|AND)?\s*(?:LICENSED\s*(?:\/|\&|AND)?\s*)?MARKETED\s*BY|MANUFACTURED\s*FOR\s*(?:\/|\&|AND)?\s*MARKETED\s*BY|MFD\.?\s*(?:\/|\&|AND)?\s*MKTD\.?\s*BY|MFD\.?\s*BY|MANUFACTURED\s*BY|MFG\.?\s*BY|PRODUCED\s*BY|MARKETED\s*BY)\s*[:=–\-]?\s*([^\n\r]+?)(?=(?:\b(?:PKD|PACKED|IMPORTED|MRP|NET|BATCH|EXP|BB|BEST|FOR\s*CUSTOMER|FOR\s*FEEDBACK)\b)|$)",
         ),
         extractor_func=lambda m: (m.group(1), normalize_entity(m.group(1))),
         confidence_weight=1.0,
@@ -497,9 +509,9 @@ EXTRACTION_PATTERNS: List[PatternDefinition] = [
         name="consumer_care_phone",
         declaration_type=DeclarationType.CONSUMER_CARE,
         pattern=re.compile(
-            r"(?i)\b(?:Toll\s*Free|Helpline|Call)\s*[:=–\-]?\s*(1800[-\s]?[0-9]{3}[-\s]?[0-9]{3,4}|\+?91[-\s]?[0-9]{10})\b",
+            r"(?i)\b(?:(?:Toll\s*Free|Helpline|Call|Phone|Tel|Mobile|Customer\s*Care|Care\s*Cell|Contact)\s*[:=–\-]?\s*(1800[-\s]?[0-9]{3}[-\s]?[0-9]{3,4}|\+?91[-\s]?[0-9]{10}|0[0-9]{2,4}[-\s]?[0-9]{6,8})|(1800[-\s]?[0-9]{3}[-\s]?[0-9]{3,4}))\b",
         ),
-        extractor_func=lambda m: (m.group(1), m.group(1).strip()),
+        extractor_func=lambda m: (m.group(1) or m.group(2), (m.group(1) or m.group(2)).strip()),
         confidence_weight=0.95,
         description="Consumer care helpline phone number"
     ),
@@ -508,7 +520,7 @@ EXTRACTION_PATTERNS: List[PatternDefinition] = [
         name="consumer_care_email",
         declaration_type=DeclarationType.CONSUMER_CARE,
         pattern=re.compile(
-            r"(?i)\b(?:Email|Mail)\s*[:=–\-]?\s*([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)\b",
+            r"(?i)(?:(?:Email|Mail|E-mail)\s*[:=–\-]?\s*)?([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)\b",
         ),
         extractor_func=lambda m: (m.group(1), m.group(1).strip().lower()),
         confidence_weight=0.95,
