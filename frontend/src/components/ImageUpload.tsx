@@ -60,6 +60,44 @@ const ImageUpload: React.FC<Props> = ({
     }
   };
 
+  // Clipboard Paste Support (Ctrl+V / Cmd+V)
+  React.useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      // Don't intercept paste if user is typing into text inputs/textareas
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') && target.getAttribute('type') !== 'file') {
+        // If the target is a text input, let normal text paste proceed
+        return;
+      }
+
+      if (lifecycleState === 'PROCESSING') return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            // Provide a default name if pasted file has none or generic name
+            const namedFile = file.name && file.name !== 'image.png'
+              ? file
+              : new File([file], `pasted_image_${Date.now()}.${file.type.split('/')[1] || 'png'}`, { type: file.type });
+            handleFileSelected(namedFile);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [lifecycleState]);
+
   // STATE B: IMAGE_SELECTED - Local selection only. Zero API calls, zero DB rows.
   const handleFileSelected = (file: File) => {
     setValidationError(null);
@@ -285,7 +323,7 @@ const ImageUpload: React.FC<Props> = ({
           <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>📸</div>
           <h3 style={{ marginBottom: '0.5rem' }}>Drag & Drop Image Here</h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Supported formats: JPEG, PNG, WebP (Max 10MB)
+            Supported formats: JPEG, PNG, WebP (Max 10MB) • Paste from clipboard (Ctrl+V)
           </p>
           <button
             type="button"

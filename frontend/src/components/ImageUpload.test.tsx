@@ -40,6 +40,34 @@ describe('ImageUpload Component Lifecycle & Invariants', () => {
     expect(uploadSpy).not.toHaveBeenCalled();
   });
 
+  it('handles image paste from clipboard in IDLE state without calling backend APIs', async () => {
+    const createSpy = vi.spyOn(apiClient, 'createInspection');
+    const uploadSpy = vi.spyOn(apiClient, 'uploadInspectionImage');
+
+    render(<ImageUpload />);
+
+    const file = new File(['fake-pasted-bytes'], 'clipboard_image.png', { type: 'image/png' });
+    const clipboardData = {
+      items: [
+        {
+          type: 'image/png',
+          getAsFile: () => file,
+        },
+      ],
+    };
+
+    fireEvent.paste(window, { clipboardData });
+
+    await waitFor(() => {
+      expect(screen.getByText(/clipboard_image.png/i)).toBeDefined();
+      expect(screen.getByText(/Start Inspection/i)).toBeDefined();
+      expect(screen.getByText(/Cancel/i)).toBeDefined();
+    });
+
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(uploadSpy).not.toHaveBeenCalled();
+  });
+
   it('cancels from STATE B back to STATE A: IDLE with zero server calls or side-effects', async () => {
     const createSpy = vi.spyOn(apiClient, 'createInspection');
     const uploadSpy = vi.spyOn(apiClient, 'uploadInspectionImage');
