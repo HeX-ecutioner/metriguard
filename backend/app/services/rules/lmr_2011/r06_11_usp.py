@@ -83,6 +83,21 @@ class UnitSalePriceRule(RegulatoryRule):
                 elif any(u in val_lower for u in ["g", "gm", "ml"]) and num > 100.0:
                     exceeds_threshold = True
 
+        # Check Second Proviso: packages containing only one number or unit (e.g. 1 N, 1 piece, 1 unit)
+        if net_qty_decl and net_qty_decl.value:
+            val_lower = net_qty_decl.value.lower()
+            count_match = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*(?:units?|unit|nos?|pcs?|pieces?|piece|n|u)\b", val_lower)
+            if count_match:
+                count_val = float(count_match.group(1))
+                if count_val <= 1.0:
+                    return self.not_applicable_finding(
+                        explanation=(
+                            f"Unit Sale Price declaration is not mandatory for packages containing only one "
+                            f"number or unit ('{net_qty_decl.value}') under Rule 6(11) second proviso."
+                        ),
+                        input_values_used={"net_quantity": net_qty_decl.value, "single_unit_count": True}
+                    )
+
         # If package is <= 100g/100ml, Rule 6(11) is NOT APPLICABLE
         if not exceeds_threshold and (net_weight is not None or net_volume is not None):
             return self.not_applicable_finding(
@@ -105,7 +120,7 @@ class UnitSalePriceRule(RegulatoryRule):
                     "declaration is missing under Rule 6(11)."
                 ),
                 input_values_used={"usp_status": "MISSING", "threshold_exceeded": True},
-                confidence=1.0,
+                confidence=self.missing_field_confidence(facts),
             )
 
         evidence = self.create_evidence_references(usp_decl, "UNIT_SALE_PRICE")
