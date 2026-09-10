@@ -104,7 +104,7 @@ def test_pdf_generation_compliant_inspection(client, db_session):
     full_text = extract_normalized_pdf_text(response.content)
 
     # Assert content matches saved inspection
-    assert "AlgoForge Prototype" in full_text
+    assert "MetriGuard Prototype" in full_text
     assert f"Inspection #{inspection.id}" in full_text
     assert "Certified Basmati Rice 5kg" in full_text
     assert "COMPLIANT" in full_text
