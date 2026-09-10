@@ -78,7 +78,7 @@ class NetQuantityDeclarationRule(RegulatoryRule):
             return self.fail_finding(
                 explanation="Mandatory Net Quantity declaration is missing under Rule 6(1)(c).",
                 input_values_used={"net_quantity_status": "MISSING"},
-                confidence=1.0,
+                confidence=self.missing_field_confidence(facts),
             )
 
         evidence = self.create_evidence_references(decl, "NET_QUANTITY")

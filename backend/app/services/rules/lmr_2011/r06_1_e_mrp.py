@@ -60,7 +60,7 @@ class MRPDeclarationRule(RegulatoryRule):
             return self.fail_finding(
                 explanation="Mandatory Maximum Retail Price (MRP) declaration is missing on retail package under Rule 6(1)(e).",
                 input_values_used={"mrp_status": "MISSING"},
-                confidence=1.0,
+                confidence=self.missing_field_confidence(facts),
             )
 
         evidence = self.create_evidence_references(decl, "MRP")

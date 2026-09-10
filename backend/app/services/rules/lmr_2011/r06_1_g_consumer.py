@@ -45,7 +45,7 @@ class ConsumerCareRule(RegulatoryRule):
             return self.fail_finding(
                 explanation="Mandatory Consumer Care contact details are missing under Rule 6(1)(g).",
                 input_values_used={"consumer_care_status": "MISSING"},
-                confidence=1.0,
+                confidence=self.missing_field_confidence(facts),
             )
 
         evidence = self.create_evidence_references(decl, "CONSUMER_CARE")

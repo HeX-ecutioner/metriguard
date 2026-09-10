@@ -55,7 +55,7 @@ class ManufacturePackingDateRule(RegulatoryRule):
             return self.fail_finding(
                 explanation="Mandatory month and year of manufacture or pre-packing is missing under Rule 6(1)(d).",
                 input_values_used={"date_status": "MISSING"},
-                confidence=1.0,
+                confidence=self.missing_field_confidence(facts),
             )
 
         ambiguous_candidates = [d for d in candidates if d.status == ExtractionStatus.AMBIGUOUS]

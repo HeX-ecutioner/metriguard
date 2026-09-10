@@ -57,7 +57,7 @@ class ManufacturerPackerImporterRule(RegulatoryRule):
                 return self.fail_finding(
                     explanation="Imported commodity must declare the name and address of the Importer under Rule 6(1)(a).",
                     input_values_used={"is_imported": True, "importer_status": "MISSING"},
-                    confidence=1.0,
+                    confidence=self.missing_field_confidence(facts),
                 )
             target_decl = imp_decl
             field_name = "IMPORTER"
@@ -68,7 +68,7 @@ class ManufacturerPackerImporterRule(RegulatoryRule):
                 return self.fail_finding(
                     explanation="Name and complete address of Manufacturer, Packer, or Importer is missing under Rule 6(1)(a).",
                     input_values_used={"entity_status": "MISSING"},
-                    confidence=1.0,
+                    confidence=self.missing_field_confidence(facts),
                 )
             # If any candidate is AMBIGUOUS, priority goes to manual review
             ambiguous_candidates = [d for d in candidates if d.status == ExtractionStatus.AMBIGUOUS]

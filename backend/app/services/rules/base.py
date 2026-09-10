@@ -129,6 +129,17 @@ class RegulatoryRule(ABC):
             )
         ]
 
+    def missing_field_confidence(self, facts: PackageFacts) -> float:
+        """
+        Computes calibrated confidence for a negative (missing declaration) finding.
+        Confidence must represent confidence in the actual finding/evidence, not merely
+        confidence that a null field was returned by the parser.
+        Because negative findings lack affirmative pixel bounding boxes or direct evidence,
+        certainty is bounded by overall OCR scan fidelity and capped below affirmative proof (0.70).
+        """
+        scan_conf = facts.overall_confidence if facts.overall_confidence is not None else 0.85
+        return round(min(0.70, max(0.20, scan_conf * 0.70)), 2)
+
     def pass_finding(
         self,
         explanation: str,
