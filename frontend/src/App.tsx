@@ -4,6 +4,7 @@ import ResultsView from './components/ResultsView';
 import DashboardView from './components/DashboardView';
 import InspectionDetailView from './components/InspectionDetailView';
 import type { PackageImage, Inspection } from './api/client';
+import './components/styles/App.css';
 
 type ViewMode = 'dashboard' | 'detail' | 'new_inspection';
 
@@ -40,10 +41,10 @@ function App() {
 
   return (
     <div className="container">
-      <header className="header" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '0.25rem' }}>
-          <img src="/logo.png" alt="MetriGuard Logo" style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'contain' }} />
-          <h1 style={{ margin: 0 }}>MetriGuard</h1>
+      <header className="header app-header">
+        <div className="app-logo-row">
+          <img src="/logo.png" alt="MetriGuard Logo" className="app-logo" />
+          <h1 className="app-title">MetriGuard</h1>
         </div>
         <p>AI-Assisted Legal Metrology Compliance Inspection Platform</p>
       </header>
@@ -77,8 +78,7 @@ function App() {
 
         {currentView !== 'new_inspection' && (
           <button
-            className="btn"
-            style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+            className="btn app-inspect-btn"
             onClick={handleStartNewInspection}
           >
             + Inspect Package
@@ -104,7 +104,7 @@ function App() {
 
         {currentView === 'new_inspection' && (
           <div className="app-grid fade-in">
-            <section className="upload-column" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <section className="upload-column app-upload-column">
               <ImageUpload
                 key={uploadSessionKey}
                 onUploadSuccess={handleUploadSuccess}
@@ -120,23 +120,10 @@ function App() {
                   onUploadAnotherImage={handleUploadAnotherImage}
                 />
               ) : (
-                <div
-                  className="glass-card"
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '100%',
-                    minHeight: '320px',
-                    textAlign: 'center',
-                    color: 'var(--text-muted)',
-                    padding: '2.5rem 1.5rem',
-                  }}
-                >
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.7 }}>📋</div>
-                  <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-main)' }}>Inspection Report</h3>
-                  <p style={{ maxWidth: '360px', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                <div className="glass-card app-empty-card">
+                  <div className="app-empty-icon">📋</div>
+                  <h3 className="app-empty-title">Inspection Report</h3>
+                  <p className="app-empty-desc">
                     Select an image and click "Start Inspection" to trigger automated OCR extraction and Legal Metrology (2011) compliance verification.
                   </p>
                 </div>

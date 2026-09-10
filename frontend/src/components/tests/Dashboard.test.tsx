@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 
-
-import DashboardView from './DashboardView';
-import InspectionDetailView from './InspectionDetailView';
-import { apiClient } from '../api/client';
-import type { DashboardStats, Inspection } from '../api/client';
+import DashboardView from '../DashboardView';
+import InspectionDetailView from '../InspectionDetailView';
+import { apiClient } from '../../api/client';
+import type { DashboardStats, Inspection } from '../../api/client';
 
 const mockPopulatedStats: DashboardStats = {
   total_inspections: 12,

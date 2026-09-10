@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { apiClient } from '../api/client';
 import type { PackageImage, Inspection, ApiError } from '../api/client';
+import './styles/ImageUpload.css';
 
 export type UploadLifecycleState = 'IDLE' | 'IMAGE_SELECTED' | 'PROCESSING' | 'COMPLETED' | 'ERROR';
 
@@ -226,8 +227,8 @@ const ImageUpload: React.FC<Props> = ({
   };
 
   return (
-    <div className="glass-card" style={{ maxWidth: '640px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+    <div className="glass-card upload-container">
+      <div className="upload-header">
         <h2>
           {lifecycleState === 'COMPLETED'
             ? 'Inspection Complete'
@@ -236,17 +237,7 @@ const ImageUpload: React.FC<Props> = ({
               : 'Upload Package Image'}
         </h2>
         {inspectionId && lifecycleState !== 'IDLE' && (
-          <span
-            style={{
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              padding: '0.35rem 0.75rem',
-              background: 'rgba(59, 130, 246, 0.15)',
-              color: 'var(--primary-color)',
-              border: '1px solid var(--primary-color)',
-              borderRadius: '9999px',
-            }}
-          >
+          <span className="upload-inspection-tag">
             Inspection ID: #{inspectionId}
           </span>
         )}
@@ -254,8 +245,8 @@ const ImageUpload: React.FC<Props> = ({
 
       {/* STATE A: Product Name Input (available only before starting) */}
       {(lifecycleState === 'IDLE' || lifecycleState === 'IMAGE_SELECTED') && (
-        <div style={{ marginBottom: '1.25rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+        <div className="upload-input-group">
+          <label className="upload-label">
             Product Name (Optional)
           </label>
           <input
@@ -263,33 +254,14 @@ const ImageUpload: React.FC<Props> = ({
             placeholder="e.g. Masala Oats 500g"
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.75rem 1rem',
-              background: 'rgba(15, 23, 42, 0.6)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: '8px',
-              color: 'var(--text-main)',
-              fontSize: '0.95rem',
-            }}
+            className="upload-text-input"
           />
         </div>
       )}
 
       {/* Validation / API Error Alert */}
       {validationError && (
-        <div
-          role="alert"
-          style={{
-            padding: '0.85rem 1rem',
-            marginBottom: '1.25rem',
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid var(--error-color)',
-            borderRadius: '8px',
-            color: '#fca5a5',
-            fontSize: '0.9rem',
-          }}
-        >
+        <div role="alert" className="upload-error-alert">
           <strong>Error:</strong> {validationError}
         </div>
       )}
@@ -297,38 +269,28 @@ const ImageUpload: React.FC<Props> = ({
       {/* STATE A: IDLE Dropzone */}
       {lifecycleState === 'IDLE' && (
         <div
-          className={`upload-area ${dragActive ? 'drag-active' : ''}`}
+          className={`upload-area upload-dropzone ${dragActive ? 'drag-active' : ''}`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          style={{
-            cursor: 'pointer',
-            padding: '2.5rem',
-            textAlign: 'center',
-            border: '2px dashed var(--glass-border)',
-            borderRadius: '12px',
-            background: dragActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-            transition: 'all 0.2s ease',
-          }}
         >
           <input
             ref={fileInputRef}
             type="file"
             accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-            style={{ display: 'none' }}
+            className="upload-file-input"
             onChange={handleFileInputChange}
           />
-          <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>📸</div>
-          <h3 style={{ marginBottom: '0.5rem' }}>Drag & Drop Image Here</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          <div className="upload-icon">📸</div>
+          <h3 className="upload-dropzone-title">Drag & Drop Image Here</h3>
+          <p className="upload-dropzone-subtitle">
             Supported formats: JPEG, PNG, WebP (Max 10MB) • Paste from clipboard (Ctrl+V)
           </p>
           <button
             type="button"
-            className="btn"
-            style={{ marginTop: '1.25rem', pointerEvents: 'none' }}
+            className="btn upload-browse-btn"
           >
             Browse Image
           </button>
@@ -339,37 +301,17 @@ const ImageUpload: React.FC<Props> = ({
       {lifecycleState !== 'IDLE' && previewUrl && (
         <div className="fade-in">
           {/* Image Preview Container */}
-          <div
-            style={{
-              position: 'relative',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              border: '1px solid var(--glass-border)',
-              maxHeight: '360px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: '#000',
-            }}
-          >
+          <div className="upload-preview-container">
             <img
               src={previewUrl}
               alt="Selected package label preview"
-              style={{ maxWidth: '100%', maxHeight: '360px', objectFit: 'contain' }}
+              className="upload-preview-image"
             />
           </div>
 
           {/* Selected File Details */}
           {selectedFile && (
-            <div
-              style={{
-                marginTop: '0.75rem',
-                fontSize: '0.85rem',
-                color: 'var(--text-muted)',
-                display: 'flex',
-                justifyContent: 'space-between',
-              }}
-            >
+            <div className="upload-file-details">
               <span>{selectedFile.name}</span>
               <span>{(selectedFile.size / 1024).toFixed(1)} KB</span>
             </div>
@@ -377,34 +319,15 @@ const ImageUpload: React.FC<Props> = ({
 
           {/* STATE C: PROCESSING Progress Indicators */}
           {lifecycleState === 'PROCESSING' && (
-            <div style={{ marginTop: '1.25rem' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: '0.85rem',
-                  marginBottom: '0.35rem',
-                }}
-              >
+            <div className="upload-progress-container">
+              <div className="upload-progress-labels">
                 <span>Analyzing package declarations & legal metrology rules...</span>
                 <span>{uploadProgress}%</span>
               </div>
-              <div
-                style={{
-                  width: '100%',
-                  height: '8px',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                }}
-              >
+              <div className="upload-progress-track">
                 <div
-                  style={{
-                    width: `${uploadProgress}%`,
-                    height: '100%',
-                    background: 'var(--primary-color)',
-                    transition: 'width 0.2s ease',
-                  }}
+                  className="upload-progress-fill"
+                  style={{ width: `${uploadProgress}%` }}
                 />
               </div>
             </div>
@@ -412,48 +335,37 @@ const ImageUpload: React.FC<Props> = ({
 
           {/* STATE D: COMPLETED Verified State */}
           {lifecycleState === 'COMPLETED' && uploadedImage && (
-            <div
-              style={{
-                marginTop: '1.25rem',
-                padding: '1rem',
-                background: 'rgba(16, 185, 129, 0.12)',
-                border: '1px solid var(--success-color)',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-              }}
-            >
-              <h4 style={{ color: 'var(--success-color)', marginBottom: '0.5rem' }}>
+            <div className="upload-completed-box">
+              <h4 className="upload-completed-title">
                 ✓ Inspection Completed Successfully
               </h4>
-              <p style={{ margin: '0.2rem 0' }}>
+              <p className="upload-completed-row">
                 <strong>Inspection ID:</strong> #{uploadedImage.inspection_id}
               </p>
-              <p style={{ margin: '0.2rem 0' }}>
+              <p className="upload-completed-row">
                 <strong>Dimensions:</strong> {uploadedImage.width} × {uploadedImage.height} px
               </p>
-              <p style={{ margin: '0.2rem 0' }}>
+              <p className="upload-completed-row">
                 <strong>File Size:</strong> {(uploadedImage.file_size / 1024).toFixed(1)} KB
               </p>
             </div>
           )}
 
           {/* Action Buttons based on lifecycle state */}
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
+          <div className="upload-actions">
             {lifecycleState === 'IMAGE_SELECTED' && (
               <>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn upload-btn-primary"
                   onClick={handleStartInspection}
-                  style={{ flex: 1 }}
                 >
                   Start Inspection
                 </button>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn upload-btn-secondary"
                   onClick={handleCancelSelection}
-                  style={{ background: 'rgba(255, 255, 255, 0.1)' }}
                 >
                   Cancel
                 </button>
@@ -463,9 +375,8 @@ const ImageUpload: React.FC<Props> = ({
             {lifecycleState === 'PROCESSING' && (
               <button
                 type="button"
-                className="btn"
+                className="btn upload-btn-cancel-processing"
                 onClick={handleCancelProcessing}
-                style={{ background: 'rgba(255, 255, 255, 0.1)', width: '100%' }}
               >
                 Return to upload screen
               </button>
@@ -474,9 +385,8 @@ const ImageUpload: React.FC<Props> = ({
             {lifecycleState === 'COMPLETED' && (
               <button
                 type="button"
-                className="btn"
+                className="btn upload-btn-primary"
                 onClick={handleUploadAnotherImage}
-                style={{ flex: 1 }}
               >
                 + Upload Another Image
               </button>
@@ -486,17 +396,15 @@ const ImageUpload: React.FC<Props> = ({
               <>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn upload-btn-primary"
                   onClick={handleStartInspection}
-                  style={{ flex: 1 }}
                 >
                   Retry Inspection
                 </button>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn upload-btn-secondary"
                   onClick={handleCancelSelection}
-                  style={{ background: 'rgba(255, 255, 255, 0.1)' }}
                 >
                   Cancel
                 </button>

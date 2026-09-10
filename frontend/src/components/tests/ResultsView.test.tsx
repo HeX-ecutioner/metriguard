@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import ResultsView from './ResultsView';
-import { apiClient } from '../api/client';
-import type { Inspection } from '../api/client';
+import ResultsView from '../ResultsView';
+import { apiClient } from '../../api/client';
+import type { Inspection } from '../../api/client';
 
 describe('ResultsView PDF Reporting Action', () => {
   const baseInspection: Inspection = {

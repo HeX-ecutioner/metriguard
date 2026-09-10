@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Inspection } from '../api/client';
 import { apiClient } from '../api/client';
 import ResultsView from './ResultsView';
+import './styles/InspectionDetailView.css';
 
 interface Props {
   inspectionId?: number;
@@ -50,17 +51,17 @@ const InspectionDetailView: React.FC<Props> = ({
 
   if (loading) {
     return (
-      <div className="glass-card fade-in" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
-        <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-        <p style={{ color: 'var(--text-muted)' }}>Loading inspection details...</p>
+      <div className="glass-card fade-in detail-loading-card">
+        <div className="spinner detail-spinner" />
+        <p className="detail-loading-text">Loading inspection details...</p>
       </div>
     );
   }
 
   if (error || !inspection) {
     return (
-      <div className="glass-card fade-in" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
-        <p style={{ color: 'var(--error-color)', fontWeight: 600, marginBottom: '1rem' }}>
+      <div className="glass-card fade-in detail-error-card">
+        <p className="detail-error-text">
           {error || 'Inspection session not found.'}
         </p>
         <button className="btn" onClick={onBack}>
@@ -71,22 +72,17 @@ const InspectionDetailView: React.FC<Props> = ({
   }
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className="fade-in detail-container">
       {/* Top action row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="detail-top-bar">
         <button
-          className="btn"
+          className="btn detail-back-btn"
           onClick={onBack}
-          style={{
-            background: 'rgba(30, 41, 59, 0.7)',
-            border: '1px solid var(--glass-border)',
-            boxShadow: 'none',
-          }}
         >
           ← Back to Dashboard
         </button>
 
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+        <span className="detail-timestamp">
           Session created {new Date(inspection.created_at).toLocaleString()}
         </span>
       </div>

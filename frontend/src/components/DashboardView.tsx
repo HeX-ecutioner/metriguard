@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { DashboardStats, Inspection } from '../api/client';
 import { apiClient } from '../api/client';
+import './styles/DashboardView.css';
 
 interface Props {
   onSelectInspection: (inspectionId: number) => void;
@@ -59,8 +60,6 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
     };
   }, []);
 
-
-
   // Handle history filtering
   const handleFilterHistory = useCallback(async (searchVal: string, statusVal: string) => {
     setHistoryLoading(true);
@@ -94,21 +93,12 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
   if (loading) {
     return (
       <div
-        className="glass-card fade-in"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '360px',
-          textAlign: 'center',
-          gap: '1rem',
-        }}
+        className="glass-card fade-in dashboard-loading-card"
         data-testid="dashboard-loading"
       >
         <div className="spinner" />
-        <h3 style={{ fontWeight: 500, color: 'var(--text-main)' }}>Loading MetriGuard Dashboard...</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+        <h3 className="dashboard-loading-title">Loading MetriGuard Dashboard...</h3>
+        <p className="dashboard-loading-text">
           Retrieving live compliance statistics and inspection records from database.
         </p>
       </div>
@@ -119,20 +109,15 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
   if (error) {
     return (
       <div
-        className="glass-card fade-in"
-        style={{
-          textAlign: 'center',
-          padding: '3rem 1.5rem',
-          border: '1px solid rgba(239, 68, 68, 0.4)',
-        }}
+        className="glass-card fade-in dashboard-error-card"
         data-testid="dashboard-error"
       >
-        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⚠️</div>
-        <h3 style={{ color: 'var(--error-color)', marginBottom: '0.5rem' }}>Failed to Load Dashboard</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: '420px', margin: '0 auto 1.5rem' }}>
+        <div className="dashboard-error-icon">⚠️</div>
+        <h3 className="dashboard-error-title">Failed to Load Dashboard</h3>
+        <p className="dashboard-error-message">
           {error}
         </p>
-        <button className="btn" onClick={handleRetry} style={{ background: 'var(--primary-color)' }}>
+        <button className="btn dashboard-retry-btn" onClick={handleRetry}>
           🔄 Retry Connection
         </button>
       </div>
@@ -143,23 +128,15 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
   if (!stats || stats.total_inspections === 0) {
     return (
       <div
-        className="glass-card fade-in"
-        style={{
-          textAlign: 'center',
-          padding: '3.5rem 2rem',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1rem',
-        }}
+        className="glass-card fade-in dashboard-empty-card"
         data-testid="dashboard-empty"
       >
-        <div style={{ fontSize: '3rem', opacity: 0.8 }}>📦</div>
-        <h3 style={{ fontSize: '1.4rem' }}>No Inspections Recorded Yet</h3>
-        <p style={{ color: 'var(--text-muted)', maxWidth: '440px', fontSize: '0.95rem', lineHeight: '1.5' }}>
+        <div className="dashboard-empty-icon">📦</div>
+        <h3 className="dashboard-empty-title">No Inspections Recorded Yet</h3>
+        <p className="dashboard-empty-text">
           The database currently contains no packaged commodity inspections. Upload a package label image to begin automated Legal Metrology compliance verification.
         </p>
-        <button className="btn" onClick={onNewInspection} style={{ marginTop: '0.5rem' }}>
+        <button className="btn dashboard-empty-btn" onClick={onNewInspection}>
           ⚡ Start First Inspection
         </button>
       </div>
@@ -172,54 +149,32 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
     : 1;
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }} data-testid="dashboard-content">
+    <div className="fade-in dashboard-container" data-testid="dashboard-content">
       {/* 1-4. Stat Cards Grid */}
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1.25rem',
-        }}
+        className="dashboard-metrics-grid"
         data-testid="metric-cards"
       >
         {/* Card 1: Total Inspections */}
-        <div
-          className="glass-card"
-          style={{
-            padding: '1.5rem',
-            borderLeft: '4px solid var(--primary-color)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-          }}
-        >
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500, textTransform: 'uppercase' }}>
+        <div className="glass-card dashboard-metric-card metric-primary">
+          <span className="dashboard-metric-label">
             Total Inspections
           </span>
-          <div style={{ fontSize: '2.25rem', fontWeight: 700, color: 'var(--text-main)' }}>
+          <div className="dashboard-metric-value">
             {stats.total_inspections}
           </div>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>All evaluated packages</span>
+          <span className="dashboard-metric-subtext">All evaluated packages</span>
         </div>
 
         {/* Card 2: Compliant */}
-        <div
-          className="glass-card"
-          style={{
-            padding: '1.5rem',
-            borderLeft: '4px solid var(--success-color)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-          }}
-        >
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500, textTransform: 'uppercase' }}>
+        <div className="glass-card dashboard-metric-card metric-success">
+          <span className="dashboard-metric-label">
             Compliant
           </span>
-          <div style={{ fontSize: '2.25rem', fontWeight: 700, color: 'var(--success-color)' }}>
+          <div className="dashboard-metric-value val-success">
             {stats.compliant_inspections}
           </div>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+          <span className="dashboard-metric-subtext">
             {stats.total_inspections > 0
               ? `${((stats.compliant_inspections / stats.total_inspections) * 100).toFixed(1)}% of total`
               : '0%'}
@@ -227,23 +182,14 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
         </div>
 
         {/* Card 3: Non-Compliant */}
-        <div
-          className="glass-card"
-          style={{
-            padding: '1.5rem',
-            borderLeft: '4px solid var(--error-color)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-          }}
-        >
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500, textTransform: 'uppercase' }}>
+        <div className="glass-card dashboard-metric-card metric-error">
+          <span className="dashboard-metric-label">
             Non-Compliant
           </span>
-          <div style={{ fontSize: '2.25rem', fontWeight: 700, color: 'var(--error-color)' }}>
+          <div className="dashboard-metric-value val-error">
             {stats.non_compliant_inspections}
           </div>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+          <span className="dashboard-metric-subtext">
             {stats.total_inspections > 0
               ? `${((stats.non_compliant_inspections / stats.total_inspections) * 100).toFixed(1)}% violations`
               : '0%'}
@@ -251,91 +197,59 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
         </div>
 
         {/* Card 4: Manual Review */}
-        <div
-          className="glass-card"
-          style={{
-            padding: '1.5rem',
-            borderLeft: '4px solid var(--warning-color)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-          }}
-        >
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500, textTransform: 'uppercase' }}>
+        <div className="glass-card dashboard-metric-card metric-warning">
+          <span className="dashboard-metric-label">
             Manual Review
           </span>
-          <div style={{ fontSize: '2.25rem', fontWeight: 700, color: 'var(--warning-color)' }}>
+          <div className="dashboard-metric-value val-warning">
             {stats.manual_review_inspections}
           </div>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Requires officer review</span>
+          <span className="dashboard-metric-subtext">Requires officer review</span>
         </div>
       </div>
 
       {/* Mid-Row: Top Violation Types & Quick Actions */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '1.5rem',
-        }}
-      >
+      <div className="dashboard-mid-row">
         {/* Section 6: Top Violation Types */}
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1.15rem' }}>Top Regulatory Violation Types</h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>LMR 2011 Enforcements</span>
+        <div className="glass-card dashboard-violations-card">
+          <div className="dashboard-section-header">
+            <h3 className="dashboard-section-title">Top Regulatory Violation Types</h3>
+            <span className="dashboard-section-subtitle">LMR 2011 Enforcements</span>
           </div>
 
           {stats.top_violations.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>
+            <p className="dashboard-violations-empty">
               No violations recorded in the database.
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} data-testid="top-violations-list">
+            <div className="dashboard-violations-list" data-testid="top-violations-list">
               {stats.top_violations.map((violation) => {
                 const percent = Math.round((violation.count / maxViolationCount) * 100);
                 return (
-                  <div key={violation.rule_id} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                  <div key={violation.rule_id} className="dashboard-violation-item">
+                    <div className="dashboard-violation-header">
+                      <span className="dashboard-violation-rule">
                         {violation.rule_id}
-                        <span style={{ marginLeft: '0.5rem', fontWeight: 400, color: 'var(--text-muted)' }}>
+                        <span className="dashboard-violation-rule-title">
                           ({violation.title})
                         </span>
                       </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div className="dashboard-violation-count-wrap">
                         <span
-                          style={{
-                            fontSize: '0.7rem',
-                            padding: '0.15rem 0.4rem',
-                            borderRadius: '4px',
-                            background: violation.severity === 'CRITICAL' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                            color: violation.severity === 'CRITICAL' ? 'var(--error-color)' : 'var(--warning-color)',
-                            fontWeight: 600,
-                          }}
+                          className={`dashboard-violation-severity ${
+                            violation.severity === 'CRITICAL' ? 'severity-critical' : 'severity-warning'
+                          }`}
                         >
                           {violation.severity}
                         </span>
-                        <strong style={{ color: 'var(--text-main)' }}>{violation.count}</strong>
+                        <strong className="dashboard-violation-count">{violation.count}</strong>
                       </div>
                     </div>
                     {/* CSS Progress Meter Bar */}
-                    <div
-                      style={{
-                        height: '6px',
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: '3px',
-                        overflow: 'hidden',
-                      }}
-                    >
+                    <div className="dashboard-meter-track">
                       <div
-                        style={{
-                          height: '100%',
-                          width: `${percent}%`,
-                          background: 'linear-gradient(90deg, #f59e0b, #ef4444)',
-                          borderRadius: '3px',
-                          transition: 'width 0.6s ease',
-                        }}
+                        className="dashboard-meter-fill"
+                        style={{ width: `${percent}%` }}
                       />
                     </div>
                   </div>
@@ -346,47 +260,47 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
         </div>
 
         {/* Action / Pipeline Quick Card */}
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1.25rem' }}>
+        <div className="glass-card dashboard-quick-action-card">
           <div>
-            <h3 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>New Package Inspection</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5' }}>
+            <h3 className="dashboard-quick-action-title">New Package Inspection</h3>
+            <p className="dashboard-quick-action-desc">
               Run automated Legal Metrology (2011) compliance verification on a new packaged commodity label.
             </p>
-            <ul style={{ listStyle: 'none', padding: 0, marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <ul className="dashboard-quick-action-list">
               <li>✓ OCR detection of declarations & units</li>
               <li>✓ Deterministic verification across 6 active rules</li>
               <li>✓ Traceable evidence bounding boxes & image links</li>
             </ul>
           </div>
 
-          <button className="btn" onClick={onNewInspection} style={{ width: '100%', padding: '0.85rem' }}>
+          <button className="btn dashboard-action-btn" onClick={onNewInspection}>
             ⚡ Launch Inspection Session
           </button>
         </div>
       </div>
 
       {/* Section 5: Recent Inspections Table */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+      <div className="glass-card dashboard-table-card">
+        <div className="dashboard-table-header">
           <div>
-            <h3 style={{ fontSize: '1.15rem' }}>Recent Inspections</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            <h3 className="dashboard-section-title">Recent Inspections</h3>
+            <p className="dashboard-section-subtitle">
               Latest 10 package inspection runs stored in database
             </p>
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }} data-testid="recent-inspections-table">
+        <div className="dashboard-table-wrapper">
+          <table className="dashboard-table" data-testid="recent-inspections-table">
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '0.75rem 0.5rem' }}>ID</th>
-                <th style={{ padding: '0.75rem 0.5rem' }}>Product / Commodity</th>
-                <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
-                <th style={{ padding: '0.75rem 0.5rem' }}>Confidence</th>
-                <th style={{ padding: '0.75rem 0.5rem' }}>Violations</th>
-                <th style={{ padding: '0.75rem 0.5rem' }}>Date</th>
-                <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>Action</th>
+              <tr className="dashboard-table-head-row">
+                <th className="dashboard-th">ID</th>
+                <th className="dashboard-th">Product / Commodity</th>
+                <th className="dashboard-th">Status</th>
+                <th className="dashboard-th">Confidence</th>
+                <th className="dashboard-th">Violations</th>
+                <th className="dashboard-th">Date</th>
+                <th className="dashboard-th dashboard-th-right">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -398,44 +312,32 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
                 return (
                   <tr
                     key={insp.id}
-                    style={{
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                      transition: 'background 0.2s ease',
-                      cursor: 'pointer',
-                    }}
+                    className="dashboard-tr"
                     onClick={() => onSelectInspection(insp.id)}
                   >
-                    <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>#{insp.id}</td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>{insp.product_name || 'Unnamed Product'}</td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>
-                      <span className={`status-badge status-${insp.status}`} style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>
+                    <td className="dashboard-td dashboard-td-bold">#{insp.id}</td>
+                    <td className="dashboard-td">{insp.product_name || 'Unnamed Product'}</td>
+                    <td className="dashboard-td">
+                      <span className={`status-badge status-${insp.status} dashboard-status-badge`}>
                         {insp.status.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>{confPercent}</td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>
+                    <td className="dashboard-td">{confPercent}</td>
+                    <td className="dashboard-td">
                       {violationCount > 0 ? (
-                        <span style={{ color: 'var(--error-color)', fontWeight: 600 }}>
+                        <span className="dashboard-violation-badge">
                           {violationCount} {violationCount === 1 ? 'violation' : 'violations'}
                         </span>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>0</span>
+                        <span className="dashboard-td-muted">0</span>
                       )}
                     </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: 'var(--text-muted)' }}>
+                    <td className="dashboard-td dashboard-td-muted">
                       {new Date(insp.created_at).toLocaleDateString()}
                     </td>
-                    <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>
+                    <td className="dashboard-td dashboard-td-right">
                       <button
-                        className="btn"
-                        style={{
-                          padding: '0.25rem 0.6rem',
-                          fontSize: '0.75rem',
-                          background: 'rgba(59, 130, 246, 0.15)',
-                          border: '1px solid var(--primary-color)',
-                          color: 'var(--primary-color)',
-                          boxShadow: 'none',
-                        }}
+                        className="btn dashboard-view-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectInspection(insp.id);
@@ -453,47 +355,30 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
       </div>
 
       {/* Section 8: Product & Inspection History with Search & Status Filter */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="glass-card dashboard-table-card">
+        <div className="dashboard-header-filter-row">
           <div>
-            <h3 style={{ fontSize: '1.15rem' }}>Product & Inspection History</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            <h3 className="dashboard-section-title">Product & Inspection History</h3>
+            <p className="dashboard-section-subtitle">
               Search across historical packaging records and filter by regulatory outcome
             </p>
           </div>
 
           {/* Search & Filter Controls */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="dashboard-filter-controls">
             <input
               type="text"
               placeholder="Search product name or notes..."
               value={historySearch}
               onChange={handleSearchChange}
-              style={{
-                background: 'rgba(15, 23, 42, 0.6)',
-                border: '1px solid var(--glass-border)',
-                borderRadius: '6px',
-                padding: '0.45rem 0.8rem',
-                color: 'var(--text-main)',
-                fontSize: '0.85rem',
-                outline: 'none',
-                minWidth: '220px',
-              }}
+              className="dashboard-search-input"
               data-testid="history-search-input"
             />
 
             <select
               value={historyStatus}
               onChange={handleStatusFilterChange}
-              style={{
-                background: 'rgba(15, 23, 42, 0.6)',
-                border: '1px solid var(--glass-border)',
-                borderRadius: '6px',
-                padding: '0.45rem 0.8rem',
-                color: 'var(--text-main)',
-                fontSize: '0.85rem',
-                outline: 'none',
-              }}
+              className="dashboard-select"
               data-testid="history-status-select"
             >
               <option value="ALL">All Statuses</option>
@@ -506,65 +391,54 @@ const DashboardView: React.FC<Props> = ({ onSelectInspection, onNewInspection })
         </div>
 
         {/* History Table */}
-        <div style={{ overflowX: 'auto' }}>
+        <div className="dashboard-table-wrapper">
           {historyLoading ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+            <div className="dashboard-table-message">
               Filtering records...
             </div>
           ) : historyList.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+            <div className="dashboard-table-message">
               No inspections match your search/filter criteria.
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }} data-testid="history-table">
+            <table className="dashboard-table" data-testid="history-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>ID</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Product Name</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Compliance Status</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Confidence</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Images</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Created At</th>
-                  <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>Details</th>
+                <tr className="dashboard-table-head-row">
+                  <th className="dashboard-th">ID</th>
+                  <th className="dashboard-th">Product Name</th>
+                  <th className="dashboard-th">Compliance Status</th>
+                  <th className="dashboard-th">Confidence</th>
+                  <th className="dashboard-th">Images</th>
+                  <th className="dashboard-th">Created At</th>
+                  <th className="dashboard-th dashboard-th-right">Details</th>
                 </tr>
               </thead>
               <tbody>
                 {historyList.map((item) => (
                   <tr
                     key={item.id}
-                    style={{
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                      cursor: 'pointer',
-                    }}
+                    className="dashboard-tr"
                     onClick={() => onSelectInspection(item.id)}
                   >
-                    <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>#{item.id}</td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>{item.product_name || '—'}</td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>
-                      <span className={`status-badge status-${item.status}`} style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}>
+                    <td className="dashboard-td dashboard-td-bold">#{item.id}</td>
+                    <td className="dashboard-td">{item.product_name || '—'}</td>
+                    <td className="dashboard-td">
+                      <span className={`status-badge status-${item.status} dashboard-status-badge-small`}>
                         {item.status.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>
+                    <td className="dashboard-td">
                       {item.overall_confidence !== null && item.overall_confidence !== undefined
                         ? `${(item.overall_confidence * 100).toFixed(0)}%`
                         : '—'}
                     </td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>{item.images?.length || 0}</td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: 'var(--text-muted)' }}>
+                    <td className="dashboard-td">{item.images?.length || 0}</td>
+                    <td className="dashboard-td dashboard-td-muted">
                       {new Date(item.created_at).toLocaleString()}
                     </td>
-                    <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>
+                    <td className="dashboard-td dashboard-td-right">
                       <button
-                        className="btn"
-                        style={{
-                          padding: '0.2rem 0.5rem',
-                          fontSize: '0.75rem',
-                          background: 'transparent',
-                          border: '1px solid var(--glass-border)',
-                          color: 'var(--text-muted)',
-                          boxShadow: 'none',
-                        }}
+                        className="btn dashboard-open-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectInspection(item.id);

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import ImageUpload from './ImageUpload';
-import { apiClient } from '../api/client';
-import type { PackageImage, Inspection } from '../api/client';
+import ImageUpload from '../ImageUpload';
+import { apiClient } from '../../api/client';
+import type { PackageImage, Inspection } from '../../api/client';
 
 describe('ImageUpload Component Lifecycle & Invariants', () => {
   beforeEach(() => {
@@ -393,4 +393,3 @@ describe('ImageUpload Component Lifecycle & Invariants', () => {
     });
   });
 });
-

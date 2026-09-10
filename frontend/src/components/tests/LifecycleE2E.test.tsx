@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import App from '../App';
-import { apiClient } from '../api/client';
-import type { Inspection, PackageImage } from '../api/client';
+import App from '../../App';
+import { apiClient } from '../../api/client';
+import type { Inspection, PackageImage } from '../../api/client';
 
 describe('Frontend End-to-End Consecutive Inspection Lifecycle', () => {
   beforeEach(() => {

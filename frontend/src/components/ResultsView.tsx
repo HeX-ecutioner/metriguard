@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Inspection } from '../api/client';
 import { apiClient } from '../api/client';
+import './styles/ResultsView.css';
 
 interface Props {
   inspection: Inspection;
@@ -62,20 +63,20 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
   };
 
   return (
-    <div className="glass-card fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className="glass-card fade-in results-container">
       {/* 1. Header & Status */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
+      <div className="results-header">
         <div>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+          <h2 className="results-title">
             Inspection Report #{inspection.id}
           </h2>
           {inspection.product_name && (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              Product: <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>{inspection.product_name}</span>
+            <p className="results-product-sub">
+              Product: <span className="results-product-name">{inspection.product_name}</span>
             </p>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div className="results-actions">
           <span className={`status-badge status-${inspection.status}`}>
             {inspection.status.replace(/_/g, ' ')}
           </span>
@@ -84,8 +85,7 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
               href={originalImageUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn"
-              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', textDecoration: 'none' }}
+              className="btn results-open-image-btn"
               title="Open the original uploaded image in a new tab"
             >
               Open Original Image ↗
@@ -94,16 +94,9 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
           {isCompleted && (
             <button
               type="button"
-              className="btn"
+              className={`btn results-pdf-btn ${isGeneratingPdf ? 'generating' : ''}`}
               onClick={handleDownloadPdf}
               disabled={isGeneratingPdf}
-              style={{
-                padding: '0.4rem 0.8rem',
-                fontSize: '0.85rem',
-                background: isGeneratingPdf ? 'rgba(100, 116, 139, 0.3)' : 'rgba(16, 185, 129, 0.2)',
-                borderColor: isGeneratingPdf ? 'var(--text-muted)' : 'var(--success-color)',
-                cursor: isGeneratingPdf ? 'not-allowed' : 'pointer',
-              }}
               title="Download formal Legal Metrology compliance PDF report"
             >
               {isGeneratingPdf ? '⏳ Generating PDF...' : '📄 Generate PDF'}
@@ -112,9 +105,8 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
           {onUploadAnotherImage && (
             <button
               type="button"
-              className="btn"
+              className="btn results-upload-another-btn"
               onClick={onUploadAnotherImage}
-              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.2)', borderColor: 'var(--primary-color)' }}
             >
               + Upload Another Image
             </button>
@@ -124,31 +116,12 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
 
       {/* PDF Generation Error Banner */}
       {pdfError && (
-        <div
-          role="alert"
-          style={{
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid var(--error-color)',
-            color: 'var(--text-main)',
-            fontSize: '0.85rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
+        <div role="alert" className="results-error-banner">
           <span>⚠️ {pdfError}</span>
           <button
             type="button"
             onClick={() => setPdfError(null)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              fontSize: '1rem',
-            }}
+            className="results-error-dismiss-btn"
           >
             ×
           </button>
@@ -157,38 +130,28 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
 
       {/* 2. Confidence Indicator */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Overall Confidence Score</span>
-          <span style={{ fontWeight: 600 }}>{confidencePercent}%</span>
+        <div className="results-confidence-header">
+          <span className="results-confidence-label">Overall Confidence Score</span>
+          <span className="results-confidence-score">{confidencePercent}%</span>
         </div>
-        <div style={{ height: '8px', background: 'var(--glass-border)', borderRadius: '4px', overflow: 'hidden' }}>
+        <div className="results-confidence-track">
           <div
-            style={{
-              height: '100%',
-              width: `${confidencePercent}%`,
-              background: confidenceVal >= 0.8 ? 'var(--success-color)' : confidenceVal >= 0.6 ? 'var(--warning-color)' : 'var(--error-color)',
-              transition: 'width 0.8s ease-out',
-            }}
+            className={`results-confidence-fill ${
+              confidenceVal >= 0.8 ? 'fill-high' : confidenceVal >= 0.6 ? 'fill-medium' : 'fill-low'
+            }`}
+            style={{ width: `${confidencePercent}%` }}
           />
         </div>
       </div>
 
       {/* 3a. Processing Failure Alert */}
       {isFailed && (
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            borderRadius: '8px',
-            borderLeft: '4px solid var(--error-color)',
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '1.25rem' }}>❌</span>
-            <strong style={{ color: 'var(--error-color)' }}>Inspection Processing Failed</strong>
+        <div className="results-failed-card">
+          <div className="results-alert-header">
+            <span className="results-alert-icon">❌</span>
+            <strong className="results-alert-title-error">Inspection Processing Failed</strong>
           </div>
-          <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: 'var(--text-main)' }}>
+          <p className="results-alert-text">
             {inspection.result?.summary || 'The inspection pipeline encountered an unrecoverable processing error (such as an image storage or database failure). This is distinct from a regulatory non-compliance finding.'}
           </p>
         </div>
@@ -196,20 +159,12 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
 
       {/* 3b. Manual Review Warnings */}
       {isManualReview && (
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            borderRadius: '8px',
-            borderLeft: '4px solid var(--warning-color)',
-            background: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '1.25rem' }}>⚠️</span>
-            <strong style={{ color: 'var(--warning-color)' }}>Manual Inspection Required</strong>
+        <div className="results-manual-card">
+          <div className="results-alert-header">
+            <span className="results-alert-icon">⚠️</span>
+            <strong className="results-alert-title-warning">Manual Inspection Required</strong>
           </div>
-          <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: 'var(--text-main)' }}>
+          <p className="results-alert-text">
             {inspection.result?.summary || 'The package analysis requires manual verification by a Legal Metrology officer due to ambiguities, low extraction confidence, or unverified mandatory declarations.'}
           </p>
         </div>
@@ -217,49 +172,34 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
 
       {/* 4. Regulatory Violations */}
       <div>
-        <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
+        <h3 className="results-section-title">
           Regulatory Violations ({inspection.violations?.length || 0})
         </h3>
         {inspection.violations && inspection.violations.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div className="results-violations-list">
             {inspection.violations.map((v) => (
-              <div
-                key={v.id}
-                style={{
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  borderLeft: '4px solid var(--error-color)',
-                  background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.12) 0%, rgba(15, 23, 42, 0.4) 100%)',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--error-color)', fontSize: '0.95rem' }}>
+              <div key={v.id} className="results-violation-card">
+                <div className="results-violation-header">
+                  <div className="results-violation-rule-info">
+                    <span className="results-violation-rule-id">
                       {v.rule_id}
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.08)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                    <span className="results-violation-version">
                       v{v.rule_version}
                     </span>
                   </div>
                   <span
-                    style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: '4px',
-                      textTransform: 'uppercase',
-                      background: v.severity === 'CRITICAL' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)',
-                      color: v.severity === 'CRITICAL' ? 'var(--error-color)' : 'var(--warning-color)',
-                    }}
+                    className={`results-violation-severity ${
+                      v.severity === 'CRITICAL' ? 'severity-critical' : 'severity-warning'
+                    }`}
                   >
                     {v.severity}
                   </span>
                 </div>
-                <p style={{ fontSize: '0.9rem', marginBottom: '0.5rem', lineHeight: '1.4' }}>
+                <p className="results-violation-explanation">
                   {v.explanation}
                 </p>
-                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                <div className="results-violation-evidence">
                   {v.confidence !== null && v.confidence !== undefined && (
                     <span>Confidence: <strong>{(v.confidence * 100).toFixed(0)}%</strong></span>
                   )}
@@ -274,45 +214,17 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
             ))}
           </div>
         ) : inspection.status === 'COMPLIANT' ? (
-          <div
-            style={{
-              padding: '1rem',
-              borderRadius: '8px',
-              background: 'rgba(16, 185, 129, 0.1)',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
-              textAlign: 'center',
-            }}
-          >
-            <p style={{ color: 'var(--success-color)', fontWeight: 500 }}>
+          <div className="results-compliant-banner">
+            <p className="results-compliant-text">
               ✓ All mandatory Legal Metrology (2011) declarations are present and compliant. No violations detected.
             </p>
           </div>
         ) : isFailed ? (
-          <div
-            style={{
-              padding: '0.75rem',
-              borderRadius: '8px',
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              textAlign: 'center',
-              color: '#fca5a5',
-              fontSize: '0.85rem',
-            }}
-          >
+          <div className="results-failure-banner">
             Inspection could not be completed due to a processing failure.
           </div>
         ) : (
-          <div
-            style={{
-              padding: '0.75rem',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid var(--glass-border)',
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-              fontSize: '0.85rem',
-            }}
-          >
+          <div className="results-clean-banner">
             No confirmed regulatory violations detected.
           </div>
         )}
@@ -320,51 +232,32 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
 
       {/* 5. Extracted Declarations */}
       <div>
-        <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
+        <h3 className="results-section-title">
           Extracted Package Declarations ({inspection.declarations?.length || 0})
         </h3>
         {inspection.declarations && inspection.declarations.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.75rem' }}>
+          <div className="results-declarations-grid">
             {inspection.declarations.map((decl) => (
-              <div
-                key={decl.id}
-                style={{
-                  padding: '0.75rem 1rem',
-                  borderRadius: '8px',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  border: '1px solid var(--glass-border)',
-                  fontSize: '0.85rem',
-                }}
-              >
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.25rem', fontWeight: 600 }}>
+              <div key={decl.id} className="results-declaration-card">
+                <div className="results-declaration-type">
                   {DECLARATION_LABELS[decl.declaration_type] || decl.declaration_type}
                 </div>
-                <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem', wordBreak: 'break-word' }}>
+                <div className="results-declaration-value">
                   {decl.extracted_value}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <div className="results-declaration-meta">
                   <span>
                     Confidence: {decl.confidence ? `${(decl.confidence * 100).toFixed(0)}%` : 'N/A'}
                   </span>
                   {decl.bounding_box && (
-                    <span style={{ color: 'var(--primary-color)' }}>📍 Bounding Box</span>
+                    <span className="results-bounding-box-tag">📍 Bounding Box</span>
                   )}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div
-            style={{
-              padding: '1rem',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--glass-border)',
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-              fontSize: '0.85rem',
-            }}
-          >
+          <div className="results-declarations-empty">
             No structured declarations extracted.
           </div>
         )}
@@ -372,7 +265,7 @@ const ResultsView: React.FC<Props> = ({ inspection, onUploadAnotherImage }) => {
 
       {/* 6. Summary Footer */}
       {inspection.result?.summary && (
-        <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <div className="results-summary-footer">
           <strong>Summary:</strong> {inspection.result.summary}
         </div>
       )}
