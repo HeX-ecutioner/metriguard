@@ -4,7 +4,7 @@ All notable changes to the MetriGuard project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-> **Notice**: MetriGuard (SIH26034) by team **AlgoForge** is an AI-assisted packaged-commodity compliance inspection prototype. It is designed for automated regulatory assistance and proof-of-concept verification under the Legal Metrology (Packaged Commodities) Rules, 2011. It is **not** a certified legal-compliance authority or official enforcement tool.
+> **Notice**: MetriGuard is an AI-assisted packaged-commodity compliance inspection prototype. It is designed for automated regulatory assistance and proof-of-concept verification under the Legal Metrology (Packaged Commodities) Rules, 2011. It is **not** a certified legal-compliance authority or official enforcement tool.
 
 ## [Unreleased]
 

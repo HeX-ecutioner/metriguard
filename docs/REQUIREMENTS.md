@@ -1,7 +1,7 @@
 # MetriGuard Software Requirements Specification (SRS)
 
 ## 1. Document Purpose
-This document defines the formal functional, non-functional, security, and quality requirements for **MetriGuard**, an AI-assisted packaged-commodity inspection system prototype. It serves as the single source of truth for system capabilities, verification criteria, and project boundaries for problem statement **SIH26034**.
+This document defines the formal functional, non-functional, security, and quality requirements for **MetriGuard**, an AI-assisted packaged-commodity inspection system prototype. It serves as the single source of truth for system capabilities, verification criteria, and project boundaries.
 
 ## 2. Project Scope
 MetriGuard provides automated assistance to inspectors by scanning pre-packaged commodity labels, extracting mandatory regulatory declarations, and evaluating compliance against specified rules under the Indian Legal Metrology (Packaged Commodities) Rules, 2011.
@@ -14,7 +14,7 @@ MetriGuard provides automated assistance to inspectors by scanning pre-packaged 
 - **System Administrator / Developer:** Evaluates inspection accuracy, maintains rule definitions, and monitors system performance metrics.
 
 ## 4. Problem Statement
-Manual inspection of packaged commodities under SIH26034 is time-consuming, prone to human error, and lacks automated evidence tracking. MetriGuard addresses this by combining computer vision and deterministic legal rules to highlight compliance violations while keeping human inspectors in the loop.
+Manual inspection of packaged commodities is time-consuming, prone to human error, and lacks automated evidence tracking. MetriGuard addresses this by combining computer vision and deterministic legal rules to highlight compliance violations while keeping human inspectors in the loop.
 
 ## 5. System Objectives
 1. **Explainable AI & Evidence:** Every compliance determination must link to exact OCR text evidence and bounding box coordinates.

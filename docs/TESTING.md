@@ -1,7 +1,7 @@
 # MetriGuard Testing & Quality Assurance Guide
 
 ## 1. Testing Goals
-The goal of the **MetriGuard** test suite is to guarantee system correctness, evidence integrity, single-image lifecycle contracts, and deterministic compliance rule execution under problem statement **SIH26034**.
+The goal of the **MetriGuard** test suite is to guarantee system correctness, evidence integrity, single-image lifecycle contracts, and deterministic compliance rule execution.
 
 ## 2. Testing Strategy
 - **Backend Unit & Integration Testing:** Pytest suite testing models, database CRUD, storage sanitization, OCR preprocessor, regex pattern extractor, and codified LMR 2011 rule engine.

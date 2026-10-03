@@ -1,12 +1,12 @@
-# MetriGuard SIH26034 Demonstration Guide
+# MetriGuard Demonstration Guide
 
 ## 1. Demonstration Objective
-This guide provides a step-by-step presentation script and operational playbook for team members demonstrating **MetriGuard** to SIH26034 hackathon judges.
+This guide provides a step-by-step presentation script and operational playbook for team members demonstrating **MetriGuard**.
 
 ## 2. Mandatory Prototype & Non-Legal Authority Disclaimer
 > [!IMPORTANT]
 > **Always state this disclaimer clearly at the start of your presentation:**
-> *"MetriGuard is an AI-assisted decision-support prototype designed for hackathon demonstration by team AlgoForge. It automates packaging declaration extraction and evaluates compliance against versioned rules under the Legal Metrology (Packaged Commodities) Rules, 2011. It is not a legally certified compliance authority. All outputs are designed to assist human inspectors who perform final verification."*
+> *"MetriGuard is an AI-assisted decision-support prototype. It automates packaging declaration extraction and evaluates compliance against versioned rules under the Legal Metrology (Packaged Commodities) Rules, 2011. It is not a legally certified compliance authority. All outputs are designed to assist human inspectors who perform final verification."*
 
 ## 3. What the System Does vs. What It Does Not Claim to Do
 
@@ -51,7 +51,7 @@ This guide provides a step-by-step presentation script and operational playbook 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ 1. Introduction & Disclaimer (30s)                                      │
-│    - Problem Statement SIH26034 introduction                            │
+│    - System introduction                                                │
 │    - Explainable AI & Human-in-the-Loop philosophy                      │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ 2. Compliant Package Walkthrough (90s)                                  │
@@ -103,7 +103,7 @@ This guide provides a step-by-step presentation script and operational playbook 
 2. Show that the backend returns HTTP 400 Bad Request and displays a clear error alert without crashing.
 
 ## 8. What to Say When OCR Fails or Is Ambiguous
-- **Say:** *"Notice how the system detected low OCR confidence on this packaging font. Instead of hallucinating a false pass or fail, AlgoForge automatically routed the inspection to MANUAL_REVIEW. This safeguards against false enforcement notices."*
+- **Say:** *"Notice how the system detected low OCR confidence on this packaging font. Instead of hallucinating a false pass or fail, the system automatically routed the inspection to MANUAL_REVIEW. This safeguards against false enforcement notices."*
 
 ## 9. What NOT to Claim to Judges
 - **DO NOT claim:** *"Our system is 100% accurate and can replace human inspectors."*

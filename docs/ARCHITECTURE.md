@@ -1,7 +1,7 @@
 # MetriGuard Architecture Document
 
 ## 1. Purpose and Scope
-**MetriGuard** is an AI-assisted packaged-commodity inspection system prototype developed for the **SIH26034** problem statement by team **AlgoForge**.
+**MetriGuard** is an AI-assisted packaged-commodity inspection system prototype.
 
 The system automates compliance verification for pre-packaged commodities under the Indian Legal Metrology (Packaged Commodities) Rules, 2011. It accepts package label images, extracts mandatory declarations using OCR and regex pattern extraction, and evaluates compliance using a deterministic, versioned rule engine.
 

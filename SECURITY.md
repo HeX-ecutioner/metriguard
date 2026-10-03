@@ -37,7 +37,7 @@ When reporting a security vulnerability, please include:
 ## 5. Responsible Disclosure Expectations
 - **Timely Review:** Maintainers will make reasonable efforts to review reported security issues promptly.
 - **Coordination:** Reporters are asked to allow maintainers a reasonable window to patch confirmed issues before public disclosure.
-- **No Bug Bounty:** This is an open-source prototype, AlgoForge does not offer a monetary bug bounty or financial reward program.
+- **No Bug Bounty:** As an open-source prototype, this project does not offer a monetary bug bounty or financial reward program.
 
 ## 6. Supported Versions
 Security updates and patches are applied only to the active development branch (`main`). Older commits or unmerged development branches are not actively maintained for security patches.

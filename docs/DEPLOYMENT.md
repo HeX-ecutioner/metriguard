@@ -11,7 +11,7 @@ The deployment model consists of:
 
 ## 2. Prototype Disclaimer & Supported Deployment Model
 > [!IMPORTANT]
-> **MetriGuard is a controlled demonstration prototype for SIH26034.**
+> **MetriGuard is a controlled demonstration prototype.**
 > - It is **not** a production legal-certification system.
 > - The primary deployment model is a **controlled demonstration server** or **native local station** running on Windows or Linux.
 
@@ -24,7 +24,7 @@ The deployment model consists of:
 ## 4. Repository Preparation
 Clone the repository and ensure clean working state:
 ```bash
-git clone https://github.com/AlgoForge/metriguard.git
+git clone https://github.com/SagnikMaitra/metriguard.git
 cd metriguard
 ```
 

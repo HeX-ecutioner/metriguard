@@ -1,10 +1,10 @@
 # Contributing to MetriGuard
 
-Thank you for your interest in contributing to **MetriGuard** by team **AlgoForge**!
+Thank you for your interest in contributing to **MetriGuard**!
 
 ## 1. Project Scope & Context
 
-**MetriGuard** is an AI-assisted packaged-commodity compliance inspection prototype developed for **Smart India Hackathon (SIH26034)**. It automates the extraction and verification of mandatory declarations under the **Legal Metrology (Packaged Commodities) Rules, 2011** (LMR 2011).
+**MetriGuard** is an AI-assisted packaged-commodity compliance inspection prototype. It automates the extraction and verification of mandatory declarations under the **Legal Metrology (Packaged Commodities) Rules, 2011** (LMR 2011).
 
 > **Disclaimer**: This repository contains an academic research and hackathon proof-of-concept prototype. It is designed to assist human inspectors with automated evidence extraction and rule evaluation. It is **not** a legally certified compliance authority or official enforcement tool.
 
@@ -16,7 +16,7 @@ The core architecture prioritizes:
 
 ## 2. Who Can Contribute
 
-This repository is primarily maintained for the SIH26034 hackathon project by team AlgoForge. Guidelines provided here serve as reference for team members, reviewers, and potential external contributors wishing to fork or propose improvements to the prototype.
+This repository is maintained as an open-source project. Guidelines provided here serve as reference for team members, reviewers, and potential external contributors wishing to fork or propose improvements to the prototype.
 
 ## 3. How to Fork and Clone
 

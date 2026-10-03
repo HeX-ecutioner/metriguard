@@ -1,7 +1,7 @@
 # MetriGuard Data Handling & Privacy Policy
 
 ## 1. Document Purpose & Scope
-This document details the data collection, processing, storage, deletion, and privacy boundaries for **MetriGuard** (developed by team **AlgoForge** for problem statement **SIH26034**).
+This document details the data collection, processing, storage, deletion, and privacy boundaries for **MetriGuard**.
 
 ## 2. Prototype Status & Privacy Disclaimer
 > [!WARNING]

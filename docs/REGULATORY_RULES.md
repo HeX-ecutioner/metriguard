@@ -1,7 +1,7 @@
 # MetriGuard Regulatory Compliance Rules Specification
 
 ## 1. Purpose and Scope
-This document specifies the codified regulatory compliance rules implemented in **MetriGuard** for evaluating pre-packaged commodities under the **Legal Metrology (Packaged Commodities) Rules, 2011** (problem statement **SIH26034**).
+This document specifies the codified regulatory compliance rules implemented in **MetriGuard** for evaluating pre-packaged commodities under the **Legal Metrology (Packaged Commodities) Rules, 2011**.
 
 The scope is strictly limited to the 6 codified prototype rules implemented in [`backend/app/services/rules/lmr_2011/`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/backend/app/services/rules/lmr_2011).
 

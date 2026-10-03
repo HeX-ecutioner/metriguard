@@ -3,7 +3,7 @@
 ## 1. Purpose of This Document
 This document provides an honest, transparent breakdown of the technical, optical, regulatory, and operational limitations of **MetriGuard**.
 
-It explicitly outlines failure modes, edge cases, and architectural boundaries to ensure judges, inspectors, and maintainers understand what the prototype can and cannot guarantee for problem statement **SIH26034**.
+It explicitly outlines failure modes, edge cases, and architectural boundaries to ensure inspectors and maintainers understand what the prototype can and cannot guarantee.
 
 ## 2. Prototype Status & Non-Legal Authority Notice
 > [!WARNING]

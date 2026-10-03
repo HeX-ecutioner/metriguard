@@ -1,5 +1,5 @@
 """
-Tests for PDF Report Generation in AlgoForge Prototype - MK I.
+Tests for PDF Report Generation in MetriGuard Prototype - MK I.
 
 Validates:
 1. Successful PDF generation for COMPLIANT inspections.

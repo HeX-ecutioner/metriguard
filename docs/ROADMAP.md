@@ -1,7 +1,7 @@
 # MetriGuard Project Roadmap
 
 ## 1. Overview & Core Engineering Principles
-This roadmap outlines the past achievements, current priorities, pre-demonstration targets, post-demo improvements, and long-term proposals for **MetriGuard** (developed by team **AlgoForge** for **SIH26034**).
+This roadmap outlines the past achievements, current priorities, pre-demonstration targets, post-demo improvements, and long-term proposals for **MetriGuard**.
 
 ### Core Priorities:
 1. **Zero AI Hallucination:** Maintain 100% deterministic rule evaluations linked to verifiable OCR text evidence.
@@ -29,13 +29,13 @@ This roadmap outlines the past achievements, current priorities, pre-demonstrati
 - [x] Native Windows launch script ([`start.ps1`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/start.ps1)) and automated verification script ([`verify_setup.ps1`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/verify_setup.ps1)).
 - [x] Comprehensive documentation suite (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `ARCHITECTURE.md`, `REQUIREMENTS.md`, `REGULATORY_RULES.md`, `IMPLEMENTATION_STATUS.md`, `DEPLOYMENT.md`, `TESTING.md`, `LIMITATIONS.md`, `API.md`, `DEMO_GUIDE.md`, `DATA_AND_PRIVACY.md`, `DECISIONS.md`).
 
-## 3. Phase 1: Current Priority (SIH Hackathon Preparation)
+## 3. Phase 1: Current Priority (Demonstration Preparation)
 
 - [ ] **Benchmark Test Image Suite:** Prepare a benchmark folder of 4 real retail packaging images (Compliant, Non-Compliant, Manual Review, Invalid) for live judge demonstrations.
 - [ ] **Demo Database Pre-seeding:** Run initial sample inspections prior to judge presentations to populate the Dashboard metrics and history table.
 - [ ] **PaddleOCR Model Weight Pre-warming:** Execute one test upload prior to live presentation to cache PaddleOCR C++ model weights in memory.
 
-## 4. Phase 2: Before SIH Demonstration (Final Polish)
+## 4. Phase 2: Before Demonstration (Final Polish)
 
 - [ ] **Interactive Presentation Practice:** Practice the 5-minute demonstration script in [`docs/DEMO_GUIDE.md`](file:///c:/Users/Sagnik/Documents/GitHub repos/metriguard/docs/DEMO_GUIDE.md).
 - [ ] **Backup Environment Verification:** Verify execution of standalone live API smoke test (`backend/smoke_test.py`) as backup presentation option.

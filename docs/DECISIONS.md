@@ -1,6 +1,6 @@
 # MetriGuard Architectural Decision Records (ADRs)
 
-This document records the key technical and architectural design decisions made for **MetriGuard** (developed by team **AlgoForge** for problem statement **SIH26034**).
+This document records the key technical and architectural design decisions made for **MetriGuard**.
 
 ## Decision 1: Web Application Architecture (Decoupled React Frontend + FastAPI Backend)
 
@@ -8,7 +8,7 @@ This document records the key technical and architectural design decisions made 
 Accepted
 
 ### Context
-The SIH26034 problem statement requires an accessible inspection interface for operators to upload package images, review extracted declarations, and inspect compliance findings across multiple devices.
+The packaged commodity inspection workflow requires an accessible inspection interface for operators to upload package images, review extracted declarations, and inspect compliance findings across multiple devices.
 
 ### Decision
 Adopt a decoupled web application architecture consisting of a React 18 single-page application (built with Vite & TypeScript) and a FastAPI backend service communicating over RESTful HTTP APIs.
